@@ -1,2 +1,2 @@
-# probablistic_automaton
+# Probablistic Putomata
 Python library for manipulating probablistic automata.
