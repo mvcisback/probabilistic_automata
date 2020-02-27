@@ -6,11 +6,22 @@ description = "Python library for manipulating probabilistic automata."
 authors = ["Marcell Vazquez-Chanlatte <mvc@linux.com>"]
 repository = "https://github.com/mvcisback/probabilistic_automata"
 license = "MIT"
+packages = [
+    { include = "probabilistic_automata" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.6"
+funcy = "^1.14"
+dfa = "^0.4.0"
+attrs = "^19.3.0"
 
 [tool.poetry.dev-dependencies]
+pytest = "^5.3.5"
+pytest-cov = "^2.8.1"
+pytest-flake8 = "^1.0.4"
+codecov = "^2.0.16"
+hypothesis = "^5.5.4"
 
 [build-system]
 requires = ["poetry>=0.12"]
