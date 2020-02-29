@@ -33,3 +33,21 @@ def test_lift():
         end, *other = pdfa.support(s, a)
         assert len(other) == 0
         assert pdfa.prob(s, end, a) == 1
+
+
+NOISY_PARITY = PA.PDFA(
+    dfa=DFA(
+        start=0,
+        label=bool,
+        inputs=set(product({0, 1}, {0, 1})),
+        transition=lambda s, c: (s + sum(c)) & 1,
+    ),
+    state2dist=lambda _: PA.uniform({0, 1}),
+)
+
+
+def test_noisy_parity():
+    assert NOISY_PARITY.prob(0, 1, 0) == 1/2
+    assert NOISY_PARITY.prob(0, 1, 1) == 1/2
+    assert NOISY_PARITY.prob(1, 1, 0) == 1/2
+    assert NOISY_PARITY.prob(1, 1, 1) == 1/2

@@ -74,8 +74,8 @@ category = "main"
 description = "Python library for modeling DFAs, Moore Machines, and Transition Systems."
 name = "dfa"
 optional = false
-python-versions = ">=3.6,<4.0"
-version = "0.4.0"
+python-versions = ">=3.7,<4.0"
+version = "1.0.1"
 
 [package.dependencies]
 attrs = ">=19.1,<20.0"
@@ -121,7 +121,7 @@ description = "A library for property-based testing"
 name = "hypothesis"
 optional = false
 python-versions = ">=3.5.2"
-version = "5.5.4"
+version = "5.5.5"
 
 [package.dependencies]
 attrs = ">=19.2.0"
@@ -372,8 +372,8 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "3a3395dcd5fa48981902f30b0a12ed86352dac56e8981f48ad30038d29162b90"
-python-versions = "^3.6"
+content-hash = "c3b7203815e862626c8049d4a65623e3ed7ccad8407b59aa9791c74463d6d231"
+python-versions = "^3.7"
 
 [metadata.files]
 atomicwrites = [
@@ -434,8 +434,8 @@ coverage = [
     {file = "coverage-5.0.3.tar.gz", hash = "sha256:77afca04240c40450c331fa796b3eab6f1e15c5ecf8bf2b8bee9706cd5452fef"},
 ]
 dfa = [
-    {file = "dfa-0.4.0-py3-none-any.whl", hash = "sha256:9f0e038caf6c35e04a11de8e8626ff6d5b829bc56cd1cab8afb757c26333dd2c"},
-    {file = "dfa-0.4.0.tar.gz", hash = "sha256:53bae7210a7fa417407310522279f8efbd3658c2ced7b599412a30c9d68afa45"},
+    {file = "dfa-1.0.1-py3-none-any.whl", hash = "sha256:bd7cb747bce0ff296fc90f7d2ce6f853d559d250652be20f59cd04f3962e34d1"},
+    {file = "dfa-1.0.1.tar.gz", hash = "sha256:771c52de4944ba8b4be725b57e599c57a5b76596ee2fcc0460b68ee97a6c121b"},
 ]
 entrypoints = [
     {file = "entrypoints-0.3-py2.py3-none-any.whl", hash = "sha256:589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19"},
@@ -449,8 +449,8 @@ funcy = [
     {file = "funcy-1.14.tar.gz", hash = "sha256:75ee84c3b446f92e68a857c2267b15a1b49c631c9d5a87a5f063cd2d6761a5c4"},
 ]
 hypothesis = [
-    {file = "hypothesis-5.5.4-py3-none-any.whl", hash = "sha256:c82209a75ffb17556b2c396bbd55832f1525938809bd8bb6651a86e7b5ded154"},
-    {file = "hypothesis-5.5.4.tar.gz", hash = "sha256:2e5382dea626072f12a17c10d2b3c3f13bb7cb35ba40d0978bc29b0ade589b63"},
+    {file = "hypothesis-5.5.5-py3-none-any.whl", hash = "sha256:09fb58fa06589cc260be3aef414d01a8ab8bcb7851d9310d0589486a4bf99ea6"},
+    {file = "hypothesis-5.5.5.tar.gz", hash = "sha256:e657d61c0d838587bb60b7c14abe5231d61784190eb7174c2339944693176936"},
 ]
 idna = [
     {file = "idna-2.9-py2.py3-none-any.whl", hash = "sha256:a068a21ceac8a4d63dbfd964670474107f541babbd2250d61922f029858365fa"},
