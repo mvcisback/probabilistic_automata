@@ -20,7 +20,7 @@ class Distribution:
         return random.choices(actions, weights)[0]
 
     def __call__(self, action):
-        return self._dist[action]
+        return self._dist.get(action, 0)
 
     def items(self):
         return self._dist.items()
@@ -71,6 +71,10 @@ class PDFA:
     @property
     def outputs(self):
         return self.dfa.outputs
+
+    @property
+    def start(self):
+        return self.dfa.start
 
     def states(self):
         return self.dfa.states()

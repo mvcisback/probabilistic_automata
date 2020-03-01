@@ -32,7 +32,11 @@ def _encode_two_player_game(mapping):
 
     def transition(state, composite_action):
         sys, env = composite_action
-        return mapping[state][sys][env][0]
+        dist = mapping[state][sys]
+
+        if env not in dist:  # Probability 0 event.
+            return state
+        return dist[env][0]
 
     def env_dist(state, sys):
         return {e: p for e, (_, p) in mapping[state][sys].items()}
@@ -69,4 +73,12 @@ def dict2pdfa(mapping, start):
 
 
 def pdfa2dict(pdfa):
-    pass
+    mapping = {}
+    for s in pdfa.states():
+        action2state_prob = {
+            a: pdfa.transition_probs(s, a) for a in pdfa.inputs
+        }
+
+        label = pdfa.dfa._label(s)
+        mapping[s] = (label, action2state_prob)
+    return mapping, pdfa.start
