@@ -1,9 +1,10 @@
 import random
-from typing import Callable, Hashable, Mapping, Optional, Set
+from collections import defaultdict
+from typing import Callable, Hashable, Mapping, Set
 
 import attr
 import funcy as fn
-from dfa import DFA
+from dfa import DFA, SupAlphabet, ProductAlphabet
 
 
 State = Hashable
@@ -21,25 +22,29 @@ class Distribution:
     def __call__(self, action):
         return self._dist[action]
 
+    def items(self):
+        return self._dist.items()
 
-def uniform(actions: Set[Action])-> Distribution:
+
+EnvDist = Callable[[State, Action], Distribution]
+
+
+def uniform(actions: Set[Action]) -> EnvDist:
     size = len(actions)
-    return Distribution({a: 1/size for a in actions})
+    dist = Distribution({a: 1/size for a in actions})
+    return lambda *_: dist
 
 
-State2ActionDist = Callable[[State], Distribution]
-
-
-def _dict2dist(state2dist) -> State2ActionDist:
+def _dict2dist(env_dist) -> EnvDist:
     @fn.memoize
-    def s2d(state):
-        dist = state2dist(state)
+    def env_dist2(state, action):
+        dist = env_dist(state, action)
         if isinstance(dist, Distribution):
             return dist
 
         return Distribution(dist)
 
-    return s2d
+    return env_dist2
 
 
 @attr.s(frozen=True, auto_attribs=True)
@@ -49,7 +54,7 @@ class PDFA:
     to a state indexed stationary distribution.
     """
     dfa: DFA = attr.ib()
-    state2dist: State2ActionDist = attr.ib(converter=_dict2dist)
+    env_dist: EnvDist = attr.ib(converter=_dict2dist)
 
     @dfa.validator
     def check_product_lang(self, _, dfa):
@@ -78,29 +83,72 @@ class PDFA:
         machine = self.dfa.run(start=start)
 
         while True:
-            action = yield state
-            action2 = (action, self.state2dist(state).sample())
-            state = machine.send(action2)
+            sys_action = yield state
+            env_action = self.env_dist(state, sys_action).sample()
+            state = machine.send((sys_action, env_action))
 
     @fn.memoize
     def support(self, state, action):
-        actions = {(action, e) for e in self.env_inputs}
-        return {self.dfa._transition(state, a) for a in actions}
+        return set(self.transition_probs(state, action).keys())
+
+    def _probs(self, start, action):
+        for e, p in self.env_dist(start, action).items():
+            end = self.dfa._transition(start, (action, e))
+            yield (end, p)
+
+    def transition_probs(self, state, action):
+        probs = defaultdict(lambda: 0)
+        for end, prob in self._probs(state, action):
+            probs[end] += prob
+        return probs
 
     def prob(self, start, end, action):
-        def reach_end(e):
-            return self.dfa._transition(start, (action, e)) == end
+        return sum(p for s, p in self._probs(start, action) if s == end)
 
-        dist = self.state2dist(start)
-        return sum(dist(e) for e in self.env_inputs if reach_end(e))
+
+def pdfa(start, label, transition, env_dist,
+         inputs=None, env_inputs=None, outputs=None) -> PDFA:
+
+    if inputs is None:
+        inputs = SupAlphabet()
+    if outputs is None:
+        outputs = {True, False}
+    if env_inputs is None:
+        env_inputs = {None}
+
+    inputs = ProductAlphabet(inputs, env_inputs)
+
+    return PDFA(
+        env_dist=env_dist,
+        dfa=DFA(
+            start=start, label=label,
+            inputs=inputs, outputs=outputs,
+            transition=transition,
+        ),
+    )
 
 
 def lift(dyn: DFA) -> PDFA:
+    """Lifts a DFA into a deterministic PDFA."""
     return PDFA(
         dfa=attr.evolve(
             dyn,
-            inputs={(i, None) for i in dyn.inputs},
+            inputs=ProductAlphabet(dyn.inputs, {None}),
             transition=lambda s, c: dyn._transition(s, c[0]),
         ),
-        state2dist=lambda _: uniform({None}),
+        env_dist=uniform({None}),
+    )
+
+
+def randomize(dyn: DFA) -> PDFA:
+    """Lifts a DFA into a PDFA where original inputs are applied
+    uniformly at random.
+    """
+    return PDFA(
+        dfa=attr.evolve(
+            dyn,
+            inputs=ProductAlphabet({None}, dyn.inputs),
+            transition=lambda s, c: dyn._transition(s, c[1]),
+        ),
+        env_dist=uniform(dyn.inputs),
     )

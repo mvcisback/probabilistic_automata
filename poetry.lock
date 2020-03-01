@@ -75,7 +75,7 @@ description = "Python library for modeling DFAs, Moore Machines, and Transition 
 name = "dfa"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "1.0.1"
+version = "1.0.3"
 
 [package.dependencies]
 attrs = ">=19.1,<20.0"
@@ -173,6 +173,22 @@ version = "0.3.1"
 [package.dependencies]
 attrs = ">=19.1,<20.0"
 funcy = ">=1.12,<2.0"
+
+[[package]]
+category = "main"
+description = "A lens library for python"
+name = "lenses"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4"
+version = "0.5.0"
+
+[package.dependencies]
+singledispatch = "*"
+
+[package.extras]
+docs = ["sphinx"]
+optional = ["pyrsistent", "frozendict"]
+tests = ["pyrsistent", "frozendict", "pytest", "coverage", "pytest-coverage", "hypothesis", "mypy"]
 
 [[package]]
 category = "dev"
@@ -322,7 +338,18 @@ security = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)"]
 socks = ["PySocks (>=1.5.6,<1.5.7 || >1.5.7)", "win-inet-pton"]
 
 [[package]]
-category = "dev"
+category = "main"
+description = "This library brings functools.singledispatch from Python 3.4 to Python 2.6-3.3."
+name = "singledispatch"
+optional = false
+python-versions = "*"
+version = "3.4.0.3"
+
+[package.dependencies]
+six = "*"
+
+[[package]]
+category = "main"
 description = "Python 2 and 3 compatibility utilities"
 name = "six"
 optional = false
@@ -372,7 +399,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "c3b7203815e862626c8049d4a65623e3ed7ccad8407b59aa9791c74463d6d231"
+content-hash = "e205cc7fa27993e4f47ac6ef4b0dcb633f9e8d377c9ba81ff5b2464e8bba1b7b"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -434,8 +461,8 @@ coverage = [
     {file = "coverage-5.0.3.tar.gz", hash = "sha256:77afca04240c40450c331fa796b3eab6f1e15c5ecf8bf2b8bee9706cd5452fef"},
 ]
 dfa = [
-    {file = "dfa-1.0.1-py3-none-any.whl", hash = "sha256:bd7cb747bce0ff296fc90f7d2ce6f853d559d250652be20f59cd04f3962e34d1"},
-    {file = "dfa-1.0.1.tar.gz", hash = "sha256:771c52de4944ba8b4be725b57e599c57a5b76596ee2fcc0460b68ee97a6c121b"},
+    {file = "dfa-1.0.3-py3-none-any.whl", hash = "sha256:09a14e1bf85d9ff81fd8485214352a48e7636490294d4161a6070381f69d61c1"},
+    {file = "dfa-1.0.3.tar.gz", hash = "sha256:111e73dcfa7e1d0ac7bfa56b012c70050b7e96cccdf722982f4fd12d7b5c7f7f"},
 ]
 entrypoints = [
     {file = "entrypoints-0.3-py2.py3-none-any.whl", hash = "sha256:589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19"},
@@ -463,6 +490,10 @@ importlib-metadata = [
 lazytree = [
     {file = "lazytree-0.3.1-py3-none-any.whl", hash = "sha256:9e2d5a237dbb9be3388edb26fc8d0d06ae1d41186ff6a8f362d10befb951e1f4"},
     {file = "lazytree-0.3.1.tar.gz", hash = "sha256:23096b04eb48743e1e90151c285a604e8281c304c7aaa4abb083c0ccca28fa55"},
+]
+lenses = [
+    {file = "lenses-0.5.0-py3-none-any.whl", hash = "sha256:5fa2892eaf6c1da230423e9b4db70348f8dc6d193f3546fce2f2fe6e9e608dcd"},
+    {file = "lenses-0.5.0.tar.gz", hash = "sha256:5b318173f2f2884c2c9933855dc5df3c014f7abe90b8ea78f29f809e919b604a"},
 ]
 mccabe = [
     {file = "mccabe-0.6.1-py2.py3-none-any.whl", hash = "sha256:ab8a6258860da4b6677da4bd2fe5dc2c659cff31b3ee4f7f5d64e79735b80d42"},
@@ -511,6 +542,10 @@ pytest-flake8 = [
 requests = [
     {file = "requests-2.23.0-py2.py3-none-any.whl", hash = "sha256:43999036bfa82904b6af1d99e4882b560e5e2c68e5c4b0aa03b655f3d7d73fee"},
     {file = "requests-2.23.0.tar.gz", hash = "sha256:b3f43d496c6daba4493e7c431722aeb7dbc6288f52a6e04e7b6023b0247817e6"},
+]
+singledispatch = [
+    {file = "singledispatch-3.4.0.3-py2.py3-none-any.whl", hash = "sha256:833b46966687b3de7f438c761ac475213e53b306740f1abfaa86e1d1aae56aa8"},
+    {file = "singledispatch-3.4.0.3.tar.gz", hash = "sha256:5b06af87df13818d14f08a028e42f566640aef80805c3b50c5056b086e3c2b9c"},
 ]
 six = [
     {file = "six-1.14.0-py2.py3-none-any.whl", hash = "sha256:8f3cd2e254d8f793e7f3d6d9df77b92252b52637291d0f0da013c76ea2724b6c"},
