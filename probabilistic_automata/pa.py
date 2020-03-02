@@ -1,20 +1,22 @@
 """Code for modeling a probablistic automaton."""
+from __future__ import annotations
 
 import random
 from collections import defaultdict
-from typing import Callable, Mapping, Set
+from typing import Callable, Mapping, Set, Union
 
 import attr
 import funcy as fn
 from dfa import DFA, SupAlphabet, ProductAlphabet
 from dfa.dfa import Alphabet, Letter, State
 
+
 Action = Letter
 
 
 @attr.s(frozen=True, auto_attribs=True)
-class Distribution:
-    """Object representing a discrete Distribution over environment actions."""
+class ExplicitDistribution:
+    """Object representing a discrete distribution over environment actions."""
     _dist: Mapping[Action, float]
 
     def sample(self) -> Action:
@@ -30,7 +32,33 @@ class Distribution:
         """Sequence of Action, Probability pairs defining the distribution."""
         return self._dist.items()
 
+    def __mul__(self, other: Distribution) -> Distribution:
+        return ProductDistribution(self, other)
 
+
+@attr.s(frozen=True, auto_attribs=True)
+class ProductDistribution:
+    left: Distribution
+    right: Distribution
+
+    def sample(self) -> Action:
+        """Sample an envionment action."""
+        return (self.left.sample(), self.right.sample())
+
+    def __call__(self, action):
+        """Evaluates the probability of an action."""
+        left_a, right_a = action
+        return self.left(left_a), self.right(right_a)
+
+    def items(self):
+        """Sequence of Action, Probability pairs defining the distribution."""
+        return zip(self.left.items(), self.right.items())
+
+    def __mul__(self, other: Distribution) -> Distribution:
+        return ProductDistribution(self, other)
+
+
+Distribution = Union[ProductDistribution, ExplicitDistribution]
 EnvDist = Callable[[State, Action], Distribution]
 
 
@@ -41,7 +69,7 @@ def uniform(actions: Set[Action]) -> EnvDist:
     of the input (environment) actions.
     """
     size = len(actions)
-    dist = Distribution({a: 1/size for a in actions})
+    dist = ExplicitDistribution({a: 1/size for a in actions})
     return lambda *_: dist
 
 
@@ -49,10 +77,10 @@ def _dict2dist(env_dist) -> EnvDist:
     @fn.memoize
     def env_dist2(state, action):
         dist = env_dist(state, action)
-        if isinstance(dist, Distribution):
+        if isinstance(dist, Distribution.__args__):
             return dist
 
-        return Distribution(dist)
+        return ExplicitDistribution(dist)
 
     return env_dist2
 
@@ -146,6 +174,42 @@ class PDFA:
         given action.
         """
         return sum(p for s, p in self._probs(start, action) if s == end)
+
+    def __or__(self, other: PDFA) -> PDFA:
+        composed_dfa = self.dfa | other.dfa
+        return PDFA(
+            dfa=composed_dfa,
+            env_dist=self.env_dist * other.env_dist,
+        )
+
+    def __rshift__(self, other: PDFA) -> PDFA:
+        """TODO:
+        - Create PDFA, source, that just outputs other's environment
+          input.
+        - (source | self)'s DFA should be compatible with other's DFA.
+        """
+        def transition(composite_state, composite_action):
+            state_l, state_r = composite_state
+            input_l, (env_l, env_r) = composite_action
+
+            state2_l = self.dfa._transition(state_l, (input_l, env_l))
+            input_r = self.dfa._label(state2_l)
+
+            state2_r = other.dfa._transition(state_r, (input_r, env_r))
+            return (state2_l, state2_r)
+
+        return pdfa(
+            start=(self.start, other.start),
+            label=lambda s: other.dfa._label(s[1]),
+            transition=transition,
+            env_dist=(self.env_dist * other.env_dist),
+            inputs=self.inputs,
+            env_inputs=ProductAlphabet(self.env_inputs, other.env_inputs),
+            outputs=other.outputs,
+        )
+
+    def __lshift__(self, other: PDFA) -> PDFA:
+        return other >> self
 
 
 def pdfa(
