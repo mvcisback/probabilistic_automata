@@ -2,7 +2,7 @@
 
 import random
 from collections import defaultdict
-from typing import Callable, Hashable, Mapping, Set
+from typing import Callable, Mapping, Set
 
 import attr
 import funcy as fn
