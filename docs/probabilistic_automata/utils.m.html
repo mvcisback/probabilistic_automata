@@ -1046,14 +1046,18 @@ def _encode_two_player_game(mapping):
     }
 
 
-def dict2pdfa(mapping, start):
+def dict2pdfa(mapping, start: PA.State):
     """Convert nested dictionary into a PDFA.
 
     - mapping is a nested dictionary of the form:
 
-       State => (Label, (Action => (State => Prob)))
-
-    - start is a State.
+       mapping = {
+         <State>:  (<Label>, {
+            <Action>: {
+                <State>: <Probability>
+            }
+         }
+       }
     """
     label_map = fn.walk_values(ig(0), mapping)
     transition_map = fn.walk_values(ig(1), mapping)
@@ -1071,6 +1075,18 @@ def dict2pdfa(mapping, start):
 
 
 def pdfa2dict(pdfa):
+    """Convert PDFA into nested dictionary of the form:
+
+       mapping = {
+         <State>:  (<Label>, {
+            <Action>: {
+                <State>: <Probability>
+            }
+         }
+       }
+
+    Returns: mapping and the start state.
+    """
     mapping = {}
     for s in pdfa.states():
         action2state_prob = {
@@ -1101,21 +1117,28 @@ def pdfa2dict(pdfa):
 <ul>
 <li>mapping is a nested dictionary of the form:</li>
 </ul>
-<p>State =&gt; (Label, (Action =&gt; (State =&gt; Prob)))</p>
-<ul>
-<li>start is a State.</li>
-</ul></div>
+<p>mapping = {
+     <State>:  (<Label>, {
+        <Action>: {
+            <State>: <Probability>
+        }
+     }
+   }</p></div>
   <div class="source_cont">
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.utils.dict2pdfa', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.utils.dict2pdfa" class="source">
-    <pre><code>def dict2pdfa(mapping, start):
+    <pre><code>def dict2pdfa(mapping, start: PA.State):
     """Convert nested dictionary into a PDFA.
 
     - mapping is a nested dictionary of the form:
 
-       State => (Label, (Action => (State => Prob)))
-
-    - start is a State.
+       mapping = {
+         <State>:  (<Label>, {
+            <Action>: {
+                <State>: <Probability>
+            }
+         }
+       }
     """
     label_map = fn.walk_values(ig(0), mapping)
     transition_map = fn.walk_values(ig(1), mapping)
@@ -1145,10 +1168,31 @@ def pdfa2dict(pdfa):
 
     
   
+    <div class="desc"><p>Convert PDFA into nested dictionary of the form:</p>
+<p>mapping = {
+     <State>:  (<Label>, {
+        <Action>: {
+            <State>: <Probability>
+        }
+     }
+   }</p>
+<p>Returns: mapping and the start state.</p></div>
   <div class="source_cont">
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.utils.pdfa2dict', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.utils.pdfa2dict" class="source">
     <pre><code>def pdfa2dict(pdfa):
+    """Convert PDFA into nested dictionary of the form:
+
+       mapping = {
+         <State>:  (<Label>, {
+            <Action>: {
+                <State>: <Probability>
+            }
+         }
+       }
+
+    Returns: mapping and the start state.
+    """
     mapping = {}
     for s in pdfa.states():
         action2state_prob = {

@@ -48,14 +48,18 @@ def _encode_two_player_game(mapping):
     }
 
 
-def dict2pdfa(mapping, start):
+def dict2pdfa(mapping, start: PA.State):
     """Convert nested dictionary into a PDFA.
 
     - mapping is a nested dictionary of the form:
 
-       State => (Label, (Action => (State => Prob)))
-
-    - start is a State.
+       mapping = {
+         <State>:  (<Label>, {
+            <Action>: {
+                <State>: <Probability>
+            }
+         }
+       }
     """
     label_map = fn.walk_values(ig(0), mapping)
     transition_map = fn.walk_values(ig(1), mapping)
@@ -73,6 +77,18 @@ def dict2pdfa(mapping, start):
 
 
 def pdfa2dict(pdfa):
+    """Convert PDFA into nested dictionary of the form:
+
+       mapping = {
+         <State>:  (<Label>, {
+            <Action>: {
+                <State>: <Probability>
+            }
+         }
+       }
+
+    Returns: mapping and the start state.
+    """
     mapping = {}
     for s in pdfa.states():
         action2state_prob = {

@@ -210,8 +210,14 @@ category = "dev"
 description = "Python implementation of Markdown."
 name = "markdown"
 optional = false
-python-versions = "*"
-version = "2.4.1"
+python-versions = ">=3.5"
+version = "3.2.1"
+
+[package.dependencies]
+setuptools = ">=36"
+
+[package.extras]
+testing = ["coverage", "pyyaml"]
 
 [[package]]
 category = "dev"
@@ -251,18 +257,15 @@ six = "*"
 
 [[package]]
 category = "dev"
-description = "A simple program and library to auto generate API documentation for Python modules."
-name = "pdoc"
+description = "Auto-generate API documentation for Python projects."
+name = "pdoc3"
 optional = false
-python-versions = "*"
-version = "0.3.2"
+python-versions = ">= 3.5"
+version = "0.7.5"
 
 [package.dependencies]
 mako = "*"
-markdown = "<2.5"
-
-[package.extras]
-syntax_highlighting = ["pygments"]
+markdown = ">=3.0"
 
 [[package]]
 category = "dev"
@@ -445,7 +448,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "f3b80f2efc1929d85cef6849434b305ca761f6106addd4f724b076f9b4460595"
+content-hash = "50175be0259af09375971a7c1f2bba8ac8d2ef5e66c3b54020d763d098ee210f"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -546,8 +549,8 @@ mako = [
     {file = "Mako-1.1.2.tar.gz", hash = "sha256:3139c5d64aa5d175dbafb95027057128b5fbd05a40c53999f3905ceb53366d9d"},
 ]
 markdown = [
-    {file = "Markdown-2.4.1.tar.gz", hash = "sha256:812ec5249f45edc31330b7fb06e52aaf6ab2d83aa27047df7cb6837ef2d269b6"},
-    {file = "Markdown-2.4.1.zip", hash = "sha256:866f5474c2361de7ccf806b438c0462380b4b90aacb9fdf59dfc4b166fb66389"},
+    {file = "Markdown-3.2.1-py2.py3-none-any.whl", hash = "sha256:e4795399163109457d4c5af2183fbe6b60326c17cfdf25ce6e7474c6624f725d"},
+    {file = "Markdown-3.2.1.tar.gz", hash = "sha256:90fee683eeabe1a92e149f7ba74e5ccdc81cd397bd6c516d93a8da0ef90b6902"},
 ]
 markupsafe = [
     {file = "MarkupSafe-1.1.1-cp27-cp27m-macosx_10_6_intel.whl", hash = "sha256:09027a7803a62ca78792ad89403b1b7a73a01c8cb65909cd876f7fcebd79b161"},
@@ -596,8 +599,8 @@ packaging = [
     {file = "packaging-20.1-py2.py3-none-any.whl", hash = "sha256:170748228214b70b672c581a3dd610ee51f733018650740e98c7df862a583f73"},
     {file = "packaging-20.1.tar.gz", hash = "sha256:e665345f9eef0c621aa0bf2f8d78cf6d21904eef16a93f020240b704a57f1334"},
 ]
-pdoc = [
-    {file = "pdoc-0.3.2.tar.gz", hash = "sha256:7835909580d5a14a06bd3de4416cf17f86a146ecb12eeb5cd83d9a93d03e6d27"},
+pdoc3 = [
+    {file = "pdoc3-0.7.5.tar.gz", hash = "sha256:ebca75b7fcf23f3b4320abe23339834d3f08c28517718e9d29e555fc38eeb33c"},
 ]
 pluggy = [
     {file = "pluggy-0.13.1-py2.py3-none-any.whl", hash = "sha256:966c145cd83c96502c3c3868f50408687b38434af77734af1e9ca461a4081d2d"},
