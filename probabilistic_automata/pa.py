@@ -1,3 +1,5 @@
+"""Code for modeling a probablistic automaton."""
+
 import random
 from collections import defaultdict
 from typing import Callable, Hashable, Mapping, Set
@@ -5,24 +7,27 @@ from typing import Callable, Hashable, Mapping, Set
 import attr
 import funcy as fn
 from dfa import DFA, SupAlphabet, ProductAlphabet
+from dfa.dfa import Alphabet, Letter, State
 
-
-State = Hashable
-Action = Hashable
+Action = Letter
 
 
 @attr.s(frozen=True, auto_attribs=True)
 class Distribution:
+    """Object representing a discrete Distribution over environment actions."""
     _dist: Mapping[Action, float]
 
     def sample(self) -> Action:
+        """Sample an envionment action."""
         actions, weights = zip(*self._dist.items())
         return random.choices(actions, weights)[0]
 
     def __call__(self, action):
+        """Evaluates the probability of an action."""
         return self._dist.get(action, 0)
 
     def items(self):
+        """Sequence of Action, Probability pairs defining the distribution."""
         return self._dist.items()
 
 
@@ -30,6 +35,11 @@ EnvDist = Callable[[State, Action], Distribution]
 
 
 def uniform(actions: Set[Action]) -> EnvDist:
+    """
+    Encodes an environment that selects actions uniformly at random,
+    i.e., maps all state/action combinations to a Uniform distribution
+    of the input (environment) actions.
+    """
     size = len(actions)
     dist = Distribution({a: 1/size for a in actions})
     return lambda *_: dist
@@ -57,29 +67,51 @@ class PDFA:
     env_dist: EnvDist = attr.ib(converter=_dict2dist)
 
     @dfa.validator
-    def check_product_lang(self, _, dfa):
+    def _check_product_lang(self, _, dfa):
         assert all(isinstance(i, tuple) and len(i) == 2 for i in dfa.inputs)
 
     @property
     def env_inputs(self):
+        """Accesses the set of environment inputs."""
         return set(fn.pluck(1, self.dfa.inputs))
 
     @property
     def inputs(self):
+        """Accesses the set of (non-environment) inputs."""
         return set(fn.pluck(0, self.dfa.inputs))
 
     @property
     def outputs(self):
+        """Accesses the set of possible outputs."""
         return self.dfa.outputs
 
     @property
     def start(self):
+        """Accesses the start state."""
         return self.dfa.start
 
     def states(self):
+        """Computes the set of reachable states from start."""
         return self.dfa.states()
 
     def run(self, *, start=None, seed=None):
+        """Co-routine interface for simulating runs of the automaton.
+
+        - Users can send system actions (elements of self.inputs).
+        - Co-routine yields the current state.
+
+        Example:
+        =======
+
+        machine: PDFA = ..
+        my_input: Action = ..            # Element of machine.inputs.
+
+        sim = machine.run()              # Start co-routine.
+
+        state1 = sim.send(my_input)
+        state2 = sim.send(my_input)
+        """
+
         if seed is not None:
             random.seed(seed)
 
@@ -92,7 +124,8 @@ class PDFA:
             state = machine.send((sys_action, env_action))
 
     @fn.memoize
-    def support(self, state, action):
+    def support(self, state, action) -> Set[State]:
+        """Returns the set of reachable states given (state, action)."""
         return set(self.transition_probs(state, action).keys())
 
     def _probs(self, start, action):
@@ -100,18 +133,31 @@ class PDFA:
             end = self.dfa._transition(start, (action, e))
             yield (end, p)
 
-    def transition_probs(self, state, action):
+    def transition_probs(self, state, action) -> Mapping[State, float]:
+        """Returns distribution over states given (state, action)"""
         probs = defaultdict(lambda: 0)
         for end, prob in self._probs(state, action):
             probs[end] += prob
         return probs
 
-    def prob(self, start, end, action):
+    def prob(self, start: State, end: State, action: Action) -> float:
+        """
+        Returns the probability of transitioning from start to end
+        given action.
+        """
         return sum(p for s, p in self._probs(start, action) if s == end)
 
 
-def pdfa(start, label, transition, env_dist,
-         inputs=None, env_inputs=None, outputs=None) -> PDFA:
+def pdfa(
+        start: State,
+        label: Callable[[State], Letter],
+        transition: Callable[[State, Action], State],
+        env_dist: EnvDist,
+        inputs: Alphabet = None,
+        env_inputs: Alphabet = None,
+        outputs: Alphabet = None
+) -> PDFA:
+    """Main entrypoint for construction a Probablistic Automaton."""
 
     if inputs is None:
         inputs = SupAlphabet()

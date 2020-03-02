@@ -4,7 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 
     <title>probabilistic_automata.pa API documentation</title>
-    <meta name="description" content="" />
+    <meta name="description" content="Code for modeling a probablistic automaton." />
 
   <link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:400,300' rel='stylesheet' type='text/css'>
   
@@ -974,7 +974,6 @@ table {
   <ul>
     <li class="mono"><a href="#probabilistic_automata.pa.Action">Action</a></li>
     <li class="mono"><a href="#probabilistic_automata.pa.EnvDist">EnvDist</a></li>
-    <li class="mono"><a href="#probabilistic_automata.pa.State">State</a></li>
   </ul>
 
     </li>
@@ -1009,7 +1008,6 @@ table {
           
   <ul>
     <li class="mono"><a href="#probabilistic_automata.pa.PDFA.__init__">__init__</a></li>
-    <li class="mono"><a href="#probabilistic_automata.pa.PDFA.check_product_lang">check_product_lang</a></li>
     <li class="mono"><a href="#probabilistic_automata.pa.PDFA.prob">prob</a></li>
     <li class="mono"><a href="#probabilistic_automata.pa.PDFA.run">run</a></li>
     <li class="mono"><a href="#probabilistic_automata.pa.PDFA.states">states</a></li>
@@ -1033,35 +1031,40 @@ table {
 
   <header id="section-intro">
   <h1 class="title"><span class="name">probabilistic_automata.pa</span> module</h1>
-  
+  <p>Code for modeling a probablistic automaton.</p>
   
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.pa', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.pa" class="source">
-    <pre><code>import random
+    <pre><code>"""Code for modeling a probablistic automaton."""
+
+import random
 from collections import defaultdict
 from typing import Callable, Hashable, Mapping, Set
 
 import attr
 import funcy as fn
 from dfa import DFA, SupAlphabet, ProductAlphabet
+from dfa.dfa import Alphabet, Letter, State
 
-
-State = Hashable
-Action = Hashable
+Action = Letter
 
 
 @attr.s(frozen=True, auto_attribs=True)
 class Distribution:
+    """Object representing a discrete Distribution over environment actions."""
     _dist: Mapping[Action, float]
 
     def sample(self) -> Action:
+        """Sample an envionment action."""
         actions, weights = zip(*self._dist.items())
         return random.choices(actions, weights)[0]
 
     def __call__(self, action):
+        """Evaluates the probability of an action."""
         return self._dist.get(action, 0)
 
     def items(self):
+        """Sequence of Action, Probability pairs defining the distribution."""
         return self._dist.items()
 
 
@@ -1069,6 +1072,11 @@ EnvDist = Callable[[State, Action], Distribution]
 
 
 def uniform(actions: Set[Action]) -> EnvDist:
+    """
+    Encodes an environment that selects actions uniformly at random,
+    i.e., maps all state/action combinations to a Uniform distribution
+    of the input (environment) actions.
+    """
     size = len(actions)
     dist = Distribution({a: 1/size for a in actions})
     return lambda *_: dist
@@ -1096,29 +1104,51 @@ class PDFA:
     env_dist: EnvDist = attr.ib(converter=_dict2dist)
 
     @dfa.validator
-    def check_product_lang(self, _, dfa):
+    def _check_product_lang(self, _, dfa):
         assert all(isinstance(i, tuple) and len(i) == 2 for i in dfa.inputs)
 
     @property
     def env_inputs(self):
+        """Accesses the set of environment inputs."""
         return set(fn.pluck(1, self.dfa.inputs))
 
     @property
     def inputs(self):
+        """Accesses the set of (non-environment) inputs."""
         return set(fn.pluck(0, self.dfa.inputs))
 
     @property
     def outputs(self):
+        """Accesses the set of possible outputs."""
         return self.dfa.outputs
 
     @property
     def start(self):
+        """Accesses the start state."""
         return self.dfa.start
 
     def states(self):
+        """Computes the set of reachable states from start."""
         return self.dfa.states()
 
     def run(self, *, start=None, seed=None):
+        """Co-routine interface for simulating runs of the automaton.
+
+        - Users can send system actions (elements of self.inputs).
+        - Co-routine yields the current state.
+
+        Example:
+        =======
+
+        machine: PDFA = ..
+        my_input: Action = ..            # Element of machine.inputs.
+
+        sim = machine.run()              # Start co-routine.
+
+        state1 = sim.send(my_input)
+        state2 = sim.send(my_input)
+        """
+
         if seed is not None:
             random.seed(seed)
 
@@ -1131,7 +1161,8 @@ class PDFA:
             state = machine.send((sys_action, env_action))
 
     @fn.memoize
-    def support(self, state, action):
+    def support(self, state, action) -> Set[State]:
+        """Returns the set of reachable states given (state, action)."""
         return set(self.transition_probs(state, action).keys())
 
     def _probs(self, start, action):
@@ -1139,18 +1170,31 @@ class PDFA:
             end = self.dfa._transition(start, (action, e))
             yield (end, p)
 
-    def transition_probs(self, state, action):
+    def transition_probs(self, state, action) -> Mapping[State, float]:
+        """Returns distribution over states given (state, action)"""
         probs = defaultdict(lambda: 0)
         for end, prob in self._probs(state, action):
             probs[end] += prob
         return probs
 
-    def prob(self, start, end, action):
+    def prob(self, start: State, end: State, action: Action) -> float:
+        """
+        Returns the probability of transitioning from start to end
+        given action.
+        """
         return sum(p for s, p in self._probs(start, action) if s == end)
 
 
-def pdfa(start, label, transition, env_dist,
-         inputs=None, env_inputs=None, outputs=None) -> PDFA:
+def pdfa(
+        start: State,
+        label: Callable[[State], Letter],
+        transition: Callable[[State, Action], State],
+        env_dist: EnvDist,
+        inputs: Alphabet = None,
+        env_inputs: Alphabet = None,
+        outputs: Alphabet = None
+) -> PDFA:
+    """Main entrypoint for construction a Probablistic Automaton."""
 
     if inputs is None:
         inputs = SupAlphabet()
@@ -1218,14 +1262,6 @@ def randomize(dyn: DFA) -> PDFA:
 </div>
 
       </div>
-      <div class="item">
-      <p id="probabilistic_automata.pa.State" class="name">var <span class="ident">State</span></p>
-      
-  
-  <div class="source_cont">
-</div>
-
-      </div>
 
     <h2 class="section-title" id="header-functions">Functions</h2>
       
@@ -1266,11 +1302,20 @@ def randomize(dyn: DFA) -> PDFA:
 
     
   
+    <div class="desc"><p>Main entrypoint for construction a Probablistic Automaton.</p></div>
   <div class="source_cont">
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.pa.pdfa', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.pa.pdfa" class="source">
-    <pre><code>def pdfa(start, label, transition, env_dist,
-         inputs=None, env_inputs=None, outputs=None) -> PDFA:
+    <pre><code>def pdfa(
+        start: State,
+        label: Callable[[State], Letter],
+        transition: Callable[[State, Action], State],
+        env_dist: EnvDist,
+        inputs: Alphabet = None,
+        env_inputs: Alphabet = None,
+        outputs: Alphabet = None
+) -> PDFA:
+    """Main entrypoint for construction a Probablistic Automaton."""
 
     if inputs is None:
         inputs = SupAlphabet()
@@ -1336,10 +1381,18 @@ uniformly at random.</p></div>
 
     
   
+    <div class="desc"><p>Encodes an environment that selects actions uniformly at random,
+i.e., maps all state/action combinations to a Uniform distribution
+of the input (environment) actions.</p></div>
   <div class="source_cont">
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.pa.uniform', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.pa.uniform" class="source">
     <pre><code>def uniform(actions: Set[Action]) -> EnvDist:
+    """
+    Encodes an environment that selects actions uniformly at random,
+    i.e., maps all state/action combinations to a Uniform distribution
+    of the input (environment) actions.
+    """
     size = len(actions)
     dist = Distribution({a: 1/size for a in actions})
     return lambda *_: dist
@@ -1356,20 +1409,25 @@ uniformly at random.</p></div>
       <p id="probabilistic_automata.pa.Distribution" class="name">class <span class="ident">Distribution</span></p>
       
   
+    <div class="desc"><p>Object representing a discrete Distribution over environment actions.</p></div>
   <div class="source_cont">
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.pa.Distribution', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.pa.Distribution" class="source">
     <pre><code>class Distribution:
+    """Object representing a discrete Distribution over environment actions."""
     _dist: Mapping[Action, float]
 
     def sample(self) -> Action:
+        """Sample an envionment action."""
         actions, weights = zip(*self._dist.items())
         return random.choices(actions, weights)[0]
 
     def __call__(self, action):
+        """Evaluates the probability of an action."""
         return self._dist.get(action, 0)
 
     def items(self):
+        """Sequence of Action, Probability pairs defining the distribution."""
         return self._dist.items()
 </code></pre>
   </div>
@@ -1414,10 +1472,12 @@ uniformly at random.</p></div>
 
     
   
+    <div class="desc"><p>Sequence of Action, Probability pairs defining the distribution.</p></div>
   <div class="source_cont">
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.pa.Distribution.items', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.pa.Distribution.items" class="source">
     <pre><code>def items(self):
+    """Sequence of Action, Probability pairs defining the distribution."""
     return self._dist.items()
 </code></pre>
   </div>
@@ -1434,10 +1494,12 @@ uniformly at random.</p></div>
 
     
   
+    <div class="desc"><p>Sample an envionment action.</p></div>
   <div class="source_cont">
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.pa.Distribution.sample', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.pa.Distribution.sample" class="source">
     <pre><code>def sample(self) -> Action:
+    """Sample an envionment action."""
     actions, weights = zip(*self._dist.items())
     return random.choices(actions, weights)[0]
 </code></pre>
@@ -1468,29 +1530,51 @@ to a state indexed stationary distribution.</p></div>
     env_dist: EnvDist = attr.ib(converter=_dict2dist)
 
     @dfa.validator
-    def check_product_lang(self, _, dfa):
+    def _check_product_lang(self, _, dfa):
         assert all(isinstance(i, tuple) and len(i) == 2 for i in dfa.inputs)
 
     @property
     def env_inputs(self):
+        """Accesses the set of environment inputs."""
         return set(fn.pluck(1, self.dfa.inputs))
 
     @property
     def inputs(self):
+        """Accesses the set of (non-environment) inputs."""
         return set(fn.pluck(0, self.dfa.inputs))
 
     @property
     def outputs(self):
+        """Accesses the set of possible outputs."""
         return self.dfa.outputs
 
     @property
     def start(self):
+        """Accesses the start state."""
         return self.dfa.start
 
     def states(self):
+        """Computes the set of reachable states from start."""
         return self.dfa.states()
 
     def run(self, *, start=None, seed=None):
+        """Co-routine interface for simulating runs of the automaton.
+
+        - Users can send system actions (elements of self.inputs).
+        - Co-routine yields the current state.
+
+        Example:
+        =======
+
+        machine: PDFA = ..
+        my_input: Action = ..            # Element of machine.inputs.
+
+        sim = machine.run()              # Start co-routine.
+
+        state1 = sim.send(my_input)
+        state2 = sim.send(my_input)
+        """
+
         if seed is not None:
             random.seed(seed)
 
@@ -1503,7 +1587,8 @@ to a state indexed stationary distribution.</p></div>
             state = machine.send((sys_action, env_action))
 
     @fn.memoize
-    def support(self, state, action):
+    def support(self, state, action) -> Set[State]:
+        """Returns the set of reachable states given (state, action)."""
         return set(self.transition_probs(state, action).keys())
 
     def _probs(self, start, action):
@@ -1511,13 +1596,18 @@ to a state indexed stationary distribution.</p></div>
             end = self.dfa._transition(start, (action, e))
             yield (end, p)
 
-    def transition_probs(self, state, action):
+    def transition_probs(self, state, action) -> Mapping[State, float]:
+        """Returns distribution over states given (state, action)"""
         probs = defaultdict(lambda: 0)
         for end, prob in self._probs(state, action):
             probs[end] += prob
         return probs
 
-    def prob(self, start, end, action):
+    def prob(self, start: State, end: State, action: Action) -> float:
+        """
+        Returns the probability of transitioning from start to end
+        given action.
+        """
         return sum(p for s, p in self._probs(start, action) if s == end)
 </code></pre>
   </div>
@@ -1558,27 +1648,6 @@ to a state indexed stationary distribution.</p></div>
   
             
   <div class="item">
-    <div class="name def" id="probabilistic_automata.pa.PDFA.check_product_lang">
-    <p>def <span class="ident">check_product_lang</span>(</p><p>self, _, dfa)</p>
-    </div>
-    
-
-    
-  
-  <div class="source_cont">
-  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.pa.PDFA.check_product_lang', this);">Show source &equiv;</a></p>
-  <div id="source-probabilistic_automata.pa.PDFA.check_product_lang" class="source">
-    <pre><code>@dfa.validator
-def check_product_lang(self, _, dfa):
-    assert all(isinstance(i, tuple) and len(i) == 2 for i in dfa.inputs)
-</code></pre>
-  </div>
-</div>
-
-  </div>
-  
-            
-  <div class="item">
     <div class="name def" id="probabilistic_automata.pa.PDFA.prob">
     <p>def <span class="ident">prob</span>(</p><p>self, start, end, action)</p>
     </div>
@@ -1586,10 +1655,16 @@ def check_product_lang(self, _, dfa):
 
     
   
+    <div class="desc"><p>Returns the probability of transitioning from start to end
+given action.</p></div>
   <div class="source_cont">
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.pa.PDFA.prob', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.pa.PDFA.prob" class="source">
-    <pre><code>def prob(self, start, end, action):
+    <pre><code>def prob(self, start: State, end: State, action: Action) -> float:
+    """
+    Returns the probability of transitioning from start to end
+    given action.
+    """
     return sum(p for s, p in self._probs(start, action) if s == end)
 </code></pre>
   </div>
@@ -1606,10 +1681,32 @@ def check_product_lang(self, _, dfa):
 
     
   
+    <div class="desc"><p>Co-routine interface for simulating runs of the automaton.</p>
+<ul>
+<li>Users can send system actions (elements of self.inputs).</li>
+<li>Co-routine yields the current state.</li>
+</ul>
+<h1>Example:</h1>
+<p>machine: PDFA = ..
+my_input: Action = ..            # Element of machine.inputs.</p>
+<p>sim = machine.run()              # Start co-routine.</p>
+<p>state1 = sim.send(my_input)
+state2 = sim.send(my_input)</p></div>
   <div class="source_cont">
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.pa.PDFA.run', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.pa.PDFA.run" class="source">
     <pre><code>def run(self, *, start=None, seed=None):
+    """Co-routine interface for simulating runs of the automaton.
+    - Users can send system actions (elements of self.inputs).
+    - Co-routine yields the current state.
+    Example:
+    =======
+    machine: PDFA = ..
+    my_input: Action = ..            # Element of machine.inputs.
+    sim = machine.run()              # Start co-routine.
+    state1 = sim.send(my_input)
+    state2 = sim.send(my_input)
+    """
     if seed is not None:
         random.seed(seed)
     state = self.start if start is None else start
@@ -1633,10 +1730,12 @@ def check_product_lang(self, _, dfa):
 
     
   
+    <div class="desc"><p>Computes the set of reachable states from start.</p></div>
   <div class="source_cont">
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.pa.PDFA.states', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.pa.PDFA.states" class="source">
     <pre><code>def states(self):
+    """Computes the set of reachable states from start."""
     return self.dfa.states()
 </code></pre>
   </div>
@@ -1653,11 +1752,13 @@ def check_product_lang(self, _, dfa):
 
     
   
+    <div class="desc"><p>Returns the set of reachable states given (state, action).</p></div>
   <div class="source_cont">
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.pa.PDFA.support', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.pa.PDFA.support" class="source">
     <pre><code>@fn.memoize
-def support(self, state, action):
+def support(self, state, action) -> Set[State]:
+    """Returns the set of reachable states given (state, action)."""
     return set(self.transition_probs(state, action).keys())
 </code></pre>
   </div>
@@ -1674,10 +1775,12 @@ def support(self, state, action):
 
     
   
+    <div class="desc"><p>Returns distribution over states given (state, action)</p></div>
   <div class="source_cont">
   <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-probabilistic_automata.pa.PDFA.transition_probs', this);">Show source &equiv;</a></p>
   <div id="source-probabilistic_automata.pa.PDFA.transition_probs" class="source">
-    <pre><code>def transition_probs(self, state, action):
+    <pre><code>def transition_probs(self, state, action) -> Mapping[State, float]:
+    """Returns distribution over states given (state, action)"""
     probs = defaultdict(lambda: 0)
     for end, prob in self._probs(state, action):
         probs[end] += prob
@@ -1695,6 +1798,7 @@ def support(self, state, action):
 
             
   
+    <div class="desc"><p>Accesses the set of environment inputs.</p></div>
   <div class="source_cont">
 </div>
 
@@ -1705,6 +1809,7 @@ def support(self, state, action):
 
             
   
+    <div class="desc"><p>Accesses the set of (non-environment) inputs.</p></div>
   <div class="source_cont">
 </div>
 
@@ -1715,6 +1820,7 @@ def support(self, state, action):
 
             
   
+    <div class="desc"><p>Accesses the set of possible outputs.</p></div>
   <div class="source_cont">
 </div>
 
@@ -1725,6 +1831,7 @@ def support(self, state, action):
 
             
   
+    <div class="desc"><p>Accesses the start state.</p></div>
   <div class="source_cont">
 </div>
 
