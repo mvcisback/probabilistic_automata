@@ -124,4 +124,3 @@ assert pdfa.inputs == {None}
 assert pdfa.env_inputs == PARITY.inputs
 ```
 
-is always the same, a
