@@ -3,74 +3,17 @@ from __future__ import annotations
 
 import random
 from collections import defaultdict
-from typing import Callable, Mapping, Set, Union
+from typing import Callable, Mapping, Set
 
 import attr
 import funcy as fn
 from dfa import DFA, SupAlphabet, ProductAlphabet
 from dfa.dfa import Alphabet, Letter, State
 
-
-Action = Letter
-
-
-@attr.s(frozen=True, auto_attribs=True)
-class ExplicitDistribution:
-    """Object representing a discrete distribution over environment actions."""
-    _dist: Mapping[Action, float]
-
-    def sample(self) -> Action:
-        """Sample an envionment action."""
-        actions, weights = zip(*self._dist.items())
-        return random.choices(actions, weights)[0]
-
-    def __call__(self, action):
-        """Evaluates the probability of an action."""
-        return self._dist.get(action, 0)
-
-    def items(self):
-        """Sequence of Action, Probability pairs defining the distribution."""
-        return self._dist.items()
-
-    def __mul__(self, other: Distribution) -> Distribution:
-        return ProductDistribution(self, other)
-
-
-@attr.s(frozen=True, auto_attribs=True)
-class ProductDistribution:
-    left: Distribution
-    right: Distribution
-
-    def sample(self) -> Action:
-        """Sample an envionment action."""
-        return (self.left.sample(), self.right.sample())
-
-    def __call__(self, action):
-        """Evaluates the probability of an action."""
-        left_a, right_a = action
-        return self.left(left_a), self.right(right_a)
-
-    def items(self):
-        """Sequence of Action, Probability pairs defining the distribution."""
-        return zip(self.left.items(), self.right.items())
-
-    def __mul__(self, other: Distribution) -> Distribution:
-        return ProductDistribution(self, other)
-
-
-Distribution = Union[ProductDistribution, ExplicitDistribution]
-EnvDist = Callable[[State, Action], Distribution]
-
-
-def uniform(actions: Set[Action]) -> EnvDist:
-    """
-    Encodes an environment that selects actions uniformly at random,
-    i.e., maps all state/action combinations to a Uniform distribution
-    of the input (environment) actions.
-    """
-    size = len(actions)
-    dist = ExplicitDistribution({a: 1/size for a in actions})
-    return lambda *_: dist
+from probabilistic_automata.distributions import (
+    Action, ExplicitDistribution, ProductDistribution, EnvDist,
+    Distribution, prod_dist, uniform
+)
 
 
 def _dict2dist(env_dist) -> EnvDist:
@@ -101,11 +44,15 @@ class PDFA:
     @property
     def env_inputs(self):
         """Accesses the set of environment inputs."""
+        if isinstance(self.dfa.inputs, ProductAlphabet):
+            return self.dfa.inputs.right
         return set(fn.pluck(1, self.dfa.inputs))
 
     @property
     def inputs(self):
         """Accesses the set of (non-environment) inputs."""
+        if isinstance(self.dfa.inputs, ProductAlphabet):
+            return self.dfa.inputs.left
         return set(fn.pluck(0, self.dfa.inputs))
 
     @property
@@ -176,33 +123,49 @@ class PDFA:
         return sum(p for s, p in self._probs(start, action) if s == end)
 
     def __or__(self, other: PDFA) -> PDFA:
-        composed_dfa = self.dfa | other.dfa
-        return PDFA(
-            dfa=composed_dfa,
-            env_dist=self.env_dist * other.env_dist,
-        )
-
-    def __rshift__(self, other: PDFA) -> PDFA:
-        """TODO:
-        - Create PDFA, source, that just outputs other's environment
-          input.
-        - (source | self)'s DFA should be compatible with other's DFA.
-        """
         def transition(composite_state, composite_action):
             state_l, state_r = composite_state
-            input_l, (env_l, env_r) = composite_action
+            (input_l, input_r), (env_l, env_r) = composite_action
 
             state2_l = self.dfa._transition(state_l, (input_l, env_l))
-            input_r = self.dfa._label(state2_l)
-
             state2_r = other.dfa._transition(state_r, (input_r, env_r))
             return (state2_l, state2_r)
 
         return pdfa(
             start=(self.start, other.start),
+            label=lambda s: (self.dfa._label(s[0]), other.dfa._label(s[1])),
+            transition=transition,
+            env_dist=prod_dist(self.env_dist, other.env_dist),
+            inputs=ProductAlphabet(self.inputs, other.inputs),
+            env_inputs=ProductAlphabet(self.env_inputs, other.env_inputs),
+            outputs=ProductAlphabet(self.outputs, other.outputs),
+        )
+
+    def __rshift__(self, other: PDFA) -> PDFA:
+        def transition(composite_state, composite_action):
+            state_l, state_r = composite_state
+            input_l, (env_l, env_r) = composite_action
+            input_r = self.dfa._label(state_l)
+
+            state2_l = self.dfa._transition(state_l, (input_l, env_l))
+            state2_r = other.dfa._transition(state_r, (input_r, env_r))
+
+            return (state2_l, state2_r)
+
+        def env_dist(composite_state, input_l):
+            state_l, state_r = composite_state
+            input_r = self.dfa._label(state_l)
+
+            return ProductDistribution(
+                left=self.env_dist(state_l, input_l),
+                right=other.env_dist(state_r, input_r),
+            )
+
+        return pdfa(
+            start=(self.start, other.start),
             label=lambda s: other.dfa._label(s[1]),
             transition=transition,
-            env_dist=(self.env_dist * other.env_dist),
+            env_dist=env_dist,
             inputs=self.inputs,
             env_inputs=ProductAlphabet(self.env_inputs, other.env_inputs),
             outputs=other.outputs,

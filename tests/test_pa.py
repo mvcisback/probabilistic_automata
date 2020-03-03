@@ -66,3 +66,61 @@ def test_randomize():
         assert len(support) == 2
         assert all(pdfa.prob(s, e, a) == 1/2 for e in support)
         assert sum(pdfa.transition_probs(s, a).values()) == 1
+
+
+def test_run():
+    pass
+
+
+def test_par_compose():
+    machine = NOISY_PARITY | NOISY_PARITY
+
+    assert machine.inputs.left == NOISY_PARITY.inputs
+    assert machine.inputs.right == NOISY_PARITY.inputs
+
+    assert machine.outputs.left == NOISY_PARITY.outputs
+    assert machine.outputs.right == NOISY_PARITY.outputs
+
+    assert machine.env_inputs.left == NOISY_PARITY.env_inputs
+    assert machine.env_inputs.right == NOISY_PARITY.env_inputs
+
+    assert machine.start == (0, 0)
+    assert machine.support((0, 0), (0, 0)) == {(0, 0), (0, 1), (1, 0), (1, 1)}
+
+    # Deterministic | Noisy
+    machine = PA.lift(PARITY) | NOISY_PARITY
+    assert machine.support((0, 0), (0, 0)) == {(0, 0), (0, 1)}
+    assert machine.support((0, 0), (1, 0)) == {(1, 0), (1, 1)}
+    assert machine.support((1, 0), (0, 0)) == {(1, 0), (1, 1)}
+
+
+def test_seq_compose():
+    # Noisy >> Noisy
+    machine = NOISY_PARITY >> NOISY_PARITY
+
+    assert machine.inputs == NOISY_PARITY.inputs
+    assert machine.outputs == NOISY_PARITY.outputs
+    assert machine.start == (0, 0)
+
+    assert machine.support((0, 0), 0) == {(0, 0), (0, 1), (1, 0), (1, 1)}
+
+    # Deterministic >> Noisy
+    machine = PA.lift(PARITY) >> NOISY_PARITY
+
+    assert machine.inputs == NOISY_PARITY.inputs
+    assert machine.outputs == NOISY_PARITY.outputs
+    assert machine.start == (0, 0)
+
+    assert machine.support((0, 0), 0) == {(0, 0), (0, 1)}
+    assert machine.support((0, 0), 1) == {(1, 0), (1, 1)}
+    assert machine.support((1, 0), 0) == {(1, 0), (1, 1)}
+
+    # Deterministic >> Deterministic
+    machine = PA.lift(PARITY) >> PA.lift(PARITY)
+
+    assert machine.start == (0, 0)
+    assert machine.support((0, 0), 0) == {(0, 0)}
+    assert machine.support((0, 0), 1) == {(1, 0)}
+    assert machine.support((1, 0), 0) == {(1, 1)}
+    assert machine.support((1, 1), 0) == {(1, 0)}
+    assert machine.support((1, 1), 1) == {(0, 0)}

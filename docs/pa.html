@@ -26,6 +26,7 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Code for modeling a probablistic automaton.&#34;&#34;&#34;
+from __future__ import annotations
 
 import random
 from collections import defaultdict
@@ -36,50 +37,20 @@ import funcy as fn
 from dfa import DFA, SupAlphabet, ProductAlphabet
 from dfa.dfa import Alphabet, Letter, State
 
-Action = Letter
-
-
-@attr.s(frozen=True, auto_attribs=True)
-class Distribution:
-    &#34;&#34;&#34;Object representing a discrete Distribution over environment actions.&#34;&#34;&#34;
-    _dist: Mapping[Action, float]
-
-    def sample(self) -&gt; Action:
-        &#34;&#34;&#34;Sample an envionment action.&#34;&#34;&#34;
-        actions, weights = zip(*self._dist.items())
-        return random.choices(actions, weights)[0]
-
-    def __call__(self, action):
-        &#34;&#34;&#34;Evaluates the probability of an action.&#34;&#34;&#34;
-        return self._dist.get(action, 0)
-
-    def items(self):
-        &#34;&#34;&#34;Sequence of Action, Probability pairs defining the distribution.&#34;&#34;&#34;
-        return self._dist.items()
-
-
-EnvDist = Callable[[State, Action], Distribution]
-
-
-def uniform(actions: Set[Action]) -&gt; EnvDist:
-    &#34;&#34;&#34;
-    Encodes an environment that selects actions uniformly at random,
-    i.e., maps all state/action combinations to a Uniform distribution
-    of the input (environment) actions.
-    &#34;&#34;&#34;
-    size = len(actions)
-    dist = Distribution({a: 1/size for a in actions})
-    return lambda *_: dist
+from probabilistic_automata.distributions import (
+    Action, ExplicitDistribution, ProductDistribution, EnvDist,
+    Distribution, prod_dist, uniform
+)
 
 
 def _dict2dist(env_dist) -&gt; EnvDist:
     @fn.memoize
     def env_dist2(state, action):
         dist = env_dist(state, action)
-        if isinstance(dist, Distribution):
+        if isinstance(dist, Distribution.__args__):
             return dist
 
-        return Distribution(dist)
+        return ExplicitDistribution(dist)
 
     return env_dist2
 
@@ -100,11 +71,15 @@ class PDFA:
     @property
     def env_inputs(self):
         &#34;&#34;&#34;Accesses the set of environment inputs.&#34;&#34;&#34;
+        if isinstance(self.dfa.inputs, ProductAlphabet):
+            return self.dfa.inputs.right
         return set(fn.pluck(1, self.dfa.inputs))
 
     @property
     def inputs(self):
         &#34;&#34;&#34;Accesses the set of (non-environment) inputs.&#34;&#34;&#34;
+        if isinstance(self.dfa.inputs, ProductAlphabet):
+            return self.dfa.inputs.left
         return set(fn.pluck(0, self.dfa.inputs))
 
     @property
@@ -174,6 +149,58 @@ class PDFA:
         &#34;&#34;&#34;
         return sum(p for s, p in self._probs(start, action) if s == end)
 
+    def __or__(self, other: PDFA) -&gt; PDFA:
+        def transition(composite_state, composite_action):
+            state_l, state_r = composite_state
+            (input_l, input_r), (env_l, env_r) = composite_action
+
+            state2_l = self.dfa._transition(state_l, (input_l, env_l))
+            state2_r = other.dfa._transition(state_r, (input_r, env_r))
+            return (state2_l, state2_r)
+
+        return pdfa(
+            start=(self.start, other.start),
+            label=lambda s: (self.dfa._label(s[0]), other.dfa._label(s[1])),
+            transition=transition,
+            env_dist=prod_dist(self.env_dist, other.env_dist),
+            inputs=ProductAlphabet(self.inputs, other.inputs),
+            env_inputs=ProductAlphabet(self.env_inputs, other.env_inputs),
+            outputs=ProductAlphabet(self.outputs, other.outputs),
+        )
+
+    def __rshift__(self, other: PDFA) -&gt; PDFA:
+        def transition(composite_state, composite_action):
+            state_l, state_r = composite_state
+            input_l, (env_l, env_r) = composite_action
+            input_r = self.dfa._label(state_l)
+
+            state2_l = self.dfa._transition(state_l, (input_l, env_l))
+            state2_r = other.dfa._transition(state_r, (input_r, env_r))
+
+            return (state2_l, state2_r)
+
+        def env_dist(composite_state, input_l):
+            state_l, state_r = composite_state
+            input_r = self.dfa._label(state_l)
+
+            return ProductDistribution(
+                left=self.env_dist(state_l, input_l),
+                right=other.env_dist(state_r, input_r),
+            )
+
+        return pdfa(
+            start=(self.start, other.start),
+            label=lambda s: other.dfa._label(s[1]),
+            transition=transition,
+            env_dist=env_dist,
+            inputs=self.inputs,
+            env_inputs=ProductAlphabet(self.env_inputs, other.env_inputs),
+            outputs=other.outputs,
+        )
+
+    def __lshift__(self, other: PDFA) -&gt; PDFA:
+        return other &gt;&gt; self
+
 
 def pdfa(
         start: State,
@@ -239,7 +266,7 @@ def randomize(dyn: DFA) -&gt; PDFA:
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="probabilistic_automata.pa.lift"><code class="name flex">
-<span>def <span class="ident">lift</span></span>(<span>dyn: dfa.dfa.DFA) -> <a title="probabilistic_automata.pa.PDFA" href="#probabilistic_automata.pa.PDFA">PDFA</a></span>
+<span>def <span class="ident">lift</span></span>(<span>dyn)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Lifts a DFA into a deterministic PDFA.</p></section>
@@ -260,7 +287,7 @@ def randomize(dyn: DFA) -&gt; PDFA:
 </details>
 </dd>
 <dt id="probabilistic_automata.pa.pdfa"><code class="name flex">
-<span>def <span class="ident">pdfa</span></span>(<span>start: Hashable, label: Callable[[Hashable], Hashable], transition: Callable[[Hashable, Hashable], Hashable], env_dist: Callable[[Hashable, Hashable], probabilistic_automata.pa.Distribution], inputs: Union[FrozenSet[Hashable], dfa.dfa.ProductAlphabet, dfa.dfa.SupAlphabet] = None, env_inputs: Union[FrozenSet[Hashable], dfa.dfa.ProductAlphabet, dfa.dfa.SupAlphabet] = None, outputs: Union[FrozenSet[Hashable], dfa.dfa.ProductAlphabet, dfa.dfa.SupAlphabet] = None) -> <a title="probabilistic_automata.pa.PDFA" href="#probabilistic_automata.pa.PDFA">PDFA</a></span>
+<span>def <span class="ident">pdfa</span></span>(<span>start, label, transition, env_dist, inputs=None, env_inputs=None, outputs=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Main entrypoint for construction a Probablistic Automaton.</p></section>
@@ -299,7 +326,7 @@ def randomize(dyn: DFA) -&gt; PDFA:
 </details>
 </dd>
 <dt id="probabilistic_automata.pa.randomize"><code class="name flex">
-<span>def <span class="ident">randomize</span></span>(<span>dyn: dfa.dfa.DFA) -> <a title="probabilistic_automata.pa.PDFA" href="#probabilistic_automata.pa.PDFA">PDFA</a></span>
+<span>def <span class="ident">randomize</span></span>(<span>dyn)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Lifts a DFA into a PDFA where original inputs are applied
@@ -322,96 +349,14 @@ uniformly at random.</p></section>
     )</code></pre>
 </details>
 </dd>
-<dt id="probabilistic_automata.pa.uniform"><code class="name flex">
-<span>def <span class="ident">uniform</span></span>(<span>actions: Set[Hashable]) -> Callable[[Hashable, Hashable], <a title="probabilistic_automata.pa.Distribution" href="#probabilistic_automata.pa.Distribution">Distribution</a>]</span>
-</code></dt>
-<dd>
-<section class="desc"><p>Encodes an environment that selects actions uniformly at random,
-i.e., maps all state/action combinations to a Uniform distribution
-of the input (environment) actions.</p></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def uniform(actions: Set[Action]) -&gt; EnvDist:
-    &#34;&#34;&#34;
-    Encodes an environment that selects actions uniformly at random,
-    i.e., maps all state/action combinations to a Uniform distribution
-    of the input (environment) actions.
-    &#34;&#34;&#34;
-    size = len(actions)
-    dist = Distribution({a: 1/size for a in actions})
-    return lambda *_: dist</code></pre>
-</details>
-</dd>
 </dl>
 </section>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="probabilistic_automata.pa.Distribution"><code class="flex name class">
-<span>class <span class="ident">Distribution</span></span>
-<span>(</span><span>dist: Mapping[Hashable, float])</span>
-</code></dt>
-<dd>
-<section class="desc"><p>Object representing a discrete Distribution over environment actions.</p></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class Distribution:
-    &#34;&#34;&#34;Object representing a discrete Distribution over environment actions.&#34;&#34;&#34;
-    _dist: Mapping[Action, float]
-
-    def sample(self) -&gt; Action:
-        &#34;&#34;&#34;Sample an envionment action.&#34;&#34;&#34;
-        actions, weights = zip(*self._dist.items())
-        return random.choices(actions, weights)[0]
-
-    def __call__(self, action):
-        &#34;&#34;&#34;Evaluates the probability of an action.&#34;&#34;&#34;
-        return self._dist.get(action, 0)
-
-    def items(self):
-        &#34;&#34;&#34;Sequence of Action, Probability pairs defining the distribution.&#34;&#34;&#34;
-        return self._dist.items()</code></pre>
-</details>
-<h3>Methods</h3>
-<dl>
-<dt id="probabilistic_automata.pa.Distribution.items"><code class="name flex">
-<span>def <span class="ident">items</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<section class="desc"><p>Sequence of Action, Probability pairs defining the distribution.</p></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def items(self):
-    &#34;&#34;&#34;Sequence of Action, Probability pairs defining the distribution.&#34;&#34;&#34;
-    return self._dist.items()</code></pre>
-</details>
-</dd>
-<dt id="probabilistic_automata.pa.Distribution.sample"><code class="name flex">
-<span>def <span class="ident">sample</span></span>(<span>self) -> Hashable</span>
-</code></dt>
-<dd>
-<section class="desc"><p>Sample an envionment action.</p></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def sample(self) -&gt; Action:
-    &#34;&#34;&#34;Sample an envionment action.&#34;&#34;&#34;
-    actions, weights = zip(*self._dist.items())
-    return random.choices(actions, weights)[0]</code></pre>
-</details>
-</dd>
-</dl>
-</dd>
 <dt id="probabilistic_automata.pa.PDFA"><code class="flex name class">
 <span>class <span class="ident">PDFA</span></span>
-<span>(</span><span>dfa: dfa.dfa.DFA, env_dist)</span>
+<span>(</span><span>dfa, env_dist)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>A DFA over a product alphabet where the first value
@@ -436,11 +381,15 @@ to a state indexed stationary distribution.</p></section>
     @property
     def env_inputs(self):
         &#34;&#34;&#34;Accesses the set of environment inputs.&#34;&#34;&#34;
+        if isinstance(self.dfa.inputs, ProductAlphabet):
+            return self.dfa.inputs.right
         return set(fn.pluck(1, self.dfa.inputs))
 
     @property
     def inputs(self):
         &#34;&#34;&#34;Accesses the set of (non-environment) inputs.&#34;&#34;&#34;
+        if isinstance(self.dfa.inputs, ProductAlphabet):
+            return self.dfa.inputs.left
         return set(fn.pluck(0, self.dfa.inputs))
 
     @property
@@ -508,7 +457,59 @@ to a state indexed stationary distribution.</p></section>
         Returns the probability of transitioning from start to end
         given action.
         &#34;&#34;&#34;
-        return sum(p for s, p in self._probs(start, action) if s == end)</code></pre>
+        return sum(p for s, p in self._probs(start, action) if s == end)
+
+    def __or__(self, other: PDFA) -&gt; PDFA:
+        def transition(composite_state, composite_action):
+            state_l, state_r = composite_state
+            (input_l, input_r), (env_l, env_r) = composite_action
+
+            state2_l = self.dfa._transition(state_l, (input_l, env_l))
+            state2_r = other.dfa._transition(state_r, (input_r, env_r))
+            return (state2_l, state2_r)
+
+        return pdfa(
+            start=(self.start, other.start),
+            label=lambda s: (self.dfa._label(s[0]), other.dfa._label(s[1])),
+            transition=transition,
+            env_dist=prod_dist(self.env_dist, other.env_dist),
+            inputs=ProductAlphabet(self.inputs, other.inputs),
+            env_inputs=ProductAlphabet(self.env_inputs, other.env_inputs),
+            outputs=ProductAlphabet(self.outputs, other.outputs),
+        )
+
+    def __rshift__(self, other: PDFA) -&gt; PDFA:
+        def transition(composite_state, composite_action):
+            state_l, state_r = composite_state
+            input_l, (env_l, env_r) = composite_action
+            input_r = self.dfa._label(state_l)
+
+            state2_l = self.dfa._transition(state_l, (input_l, env_l))
+            state2_r = other.dfa._transition(state_r, (input_r, env_r))
+
+            return (state2_l, state2_r)
+
+        def env_dist(composite_state, input_l):
+            state_l, state_r = composite_state
+            input_r = self.dfa._label(state_l)
+
+            return ProductDistribution(
+                left=self.env_dist(state_l, input_l),
+                right=other.env_dist(state_r, input_r),
+            )
+
+        return pdfa(
+            start=(self.start, other.start),
+            label=lambda s: other.dfa._label(s[1]),
+            transition=transition,
+            env_dist=env_dist,
+            inputs=self.inputs,
+            env_inputs=ProductAlphabet(self.env_inputs, other.env_inputs),
+            outputs=other.outputs,
+        )
+
+    def __lshift__(self, other: PDFA) -&gt; PDFA:
+        return other &gt;&gt; self</code></pre>
 </details>
 <h3>Instance variables</h3>
 <dl>
@@ -522,6 +523,8 @@ to a state indexed stationary distribution.</p></section>
 <pre><code class="python">@property
 def env_inputs(self):
     &#34;&#34;&#34;Accesses the set of environment inputs.&#34;&#34;&#34;
+    if isinstance(self.dfa.inputs, ProductAlphabet):
+        return self.dfa.inputs.right
     return set(fn.pluck(1, self.dfa.inputs))</code></pre>
 </details>
 </dd>
@@ -535,6 +538,8 @@ def env_inputs(self):
 <pre><code class="python">@property
 def inputs(self):
     &#34;&#34;&#34;Accesses the set of (non-environment) inputs.&#34;&#34;&#34;
+    if isinstance(self.dfa.inputs, ProductAlphabet):
+        return self.dfa.inputs.left
     return set(fn.pluck(0, self.dfa.inputs))</code></pre>
 </details>
 </dd>
@@ -568,7 +573,7 @@ def start(self):
 <h3>Methods</h3>
 <dl>
 <dt id="probabilistic_automata.pa.PDFA.prob"><code class="name flex">
-<span>def <span class="ident">prob</span></span>(<span>self, start: Hashable, end: Hashable, action: Hashable) -> float</span>
+<span>def <span class="ident">prob</span></span>(<span>self, start, end, action)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Returns the probability of transitioning from start to end
@@ -651,7 +656,7 @@ state2 = sim.send(my_input)</p></section>
 </details>
 </dd>
 <dt id="probabilistic_automata.pa.PDFA.support"><code class="name flex">
-<span>def <span class="ident">support</span></span>(<span>self, state, action) -> Set[Hashable]</span>
+<span>def <span class="ident">support</span></span>(<span>self, state, action)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Returns the set of reachable states given (state, action).</p></section>
@@ -666,7 +671,7 @@ def support(self, state, action) -&gt; Set[State]:
 </details>
 </dd>
 <dt id="probabilistic_automata.pa.PDFA.transition_probs"><code class="name flex">
-<span>def <span class="ident">transition_probs</span></span>(<span>self, state, action) -> Mapping[Hashable, float]</span>
+<span>def <span class="ident">transition_probs</span></span>(<span>self, state, action)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Returns distribution over states given (state, action)</p></section>
@@ -703,18 +708,10 @@ def support(self, state, action) -&gt; Set[State]:
 <li><code><a title="probabilistic_automata.pa.lift" href="#probabilistic_automata.pa.lift">lift</a></code></li>
 <li><code><a title="probabilistic_automata.pa.pdfa" href="#probabilistic_automata.pa.pdfa">pdfa</a></code></li>
 <li><code><a title="probabilistic_automata.pa.randomize" href="#probabilistic_automata.pa.randomize">randomize</a></code></li>
-<li><code><a title="probabilistic_automata.pa.uniform" href="#probabilistic_automata.pa.uniform">uniform</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
-<li>
-<h4><code><a title="probabilistic_automata.pa.Distribution" href="#probabilistic_automata.pa.Distribution">Distribution</a></code></h4>
-<ul class="">
-<li><code><a title="probabilistic_automata.pa.Distribution.items" href="#probabilistic_automata.pa.Distribution.items">items</a></code></li>
-<li><code><a title="probabilistic_automata.pa.Distribution.sample" href="#probabilistic_automata.pa.Distribution.sample">sample</a></code></li>
-</ul>
-</li>
 <li>
 <h4><code><a title="probabilistic_automata.pa.PDFA" href="#probabilistic_automata.pa.PDFA">PDFA</a></code></h4>
 <ul class="two-column">
