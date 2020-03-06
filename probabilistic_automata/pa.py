@@ -39,6 +39,8 @@ class PDFA:
 
     @dfa.validator
     def _check_product_lang(self, _, dfa):
+        if isinstance(dfa.inputs, ProductAlphabet):
+            return
         assert all(isinstance(i, tuple) and len(i) == 2 for i in dfa.inputs)
 
     @property
