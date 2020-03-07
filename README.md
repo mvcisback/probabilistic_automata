@@ -3,7 +3,7 @@
 [![Build Status](https://cloud.drone.io/api/badges/mvcisback/probabilistic_automata/status.svg)](https://cloud.drone.io/mvcisback/probabilistic_automata)
 [![Docs](https://img.shields.io/badge/API-link-color)](https://mvcisback.github.io/probabilistic_automata)
 [![codecov](https://codecov.io/gh/mvcisback/probabilistic_automata/branch/master/graph/badge.svg)](https://codecov.io/gh/mvcisback/probabilistic_automata)
-[![PyPI version](https://badge.fury.io/py/probabilistic_automata.svg)](https://badge.fury.io/py/probabilistic_automata)
+[![PyPI version](https://badge.fury.io/py/probabilistic-automata.svg)](https://badge.fury.io/py/probabilistic-automata)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Python library for manipulating Probabilistic Automata. This library
@@ -111,7 +111,7 @@ parity = DFA(
 
 parity_pdfa = lift(parity)
 
-assert pdfa.inputs == PARITY.inputs
+assert pdfa.inputs == parity.inputs
 assert pdfa.env_inputs == {None}
 ```
 
@@ -119,9 +119,46 @@ assert pdfa.env_inputs == {None}
   the actions of the `DFA` being selected uniformly at random.
 
 ```
-pdfa = PA.randomize(PARITY)
+noisy_parity = PA.randomize(parity)
 
-assert pdfa.inputs == {None}
-assert pdfa.env_inputs == PARITY.inputs
+assert noisy_parity.inputs == {None}
+assert noisy_parity.env_inputs == noisy_parity.inputs
 ```
 
+## Composition
+
+Like their deterministic variants `PDFA` objects can be combined in
+two ways:
+
+1. (Synchronous) Cascading Composition: Feed outputs of one `PDFA` into another.
+
+```python
+machine = noisy_parity >> noisy_parity
+
+assert machine.inputs == noisy_parity.inputs
+assert machine.outputs == noisy_parity.outputs
+assert machine.start == (0, 0)
+
+assert machine.support((0, 0), 0) == {(0, 0), (0, 1), (1, 0), (1, 1)}
+```
+
+2. (Synchronous) Parallel Composition: Run two `PDFA`s in parallel.
+
+```python
+machine = noisy_parity | noisy_parity
+
+assert machine.inputs.left == noisy_parity.inputs
+assert machine.inputs.right == noisy_parity.inputs
+
+assert machine.outputs.left == noisy_parity.outputs
+assert machine.outputs.right == noisy_parity.outputs
+
+assert machine.env_inputs.left == noisy_parity.env_inputs
+assert machine.env_inputs.right == noisy_parity.env_inputs
+
+assert machine.start == (0, 0)
+assert machine.support((0, 0), (0, 0)) == {(0, 0), (0, 1), (1, 0), (1, 1)}
+```
+
+**Note** Parallel composition results in a `PDFA` with
+`dfa.ProductAlphabet` input and output alphabets.
