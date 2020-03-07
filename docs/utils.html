@@ -123,7 +123,37 @@ def pdfa2dict(pdfa):
 
         label = pdfa.dfa._label(s)
         mapping[s] = (label, action2state_prob)
-    return mapping, pdfa.start</code></pre>
+    return mapping, pdfa.start
+
+
+def prob_pred(dyn, *, pred, horizon) -&gt; float:
+    &#34;&#34;&#34;
+    Return the probability that pred will evaluate to true before
+    horizon time step assuming system inputs are applied uniformly at
+    random.
+    &#34;&#34;&#34;
+    prob = {}
+
+    def pevent(state, path_prob, time):
+        nonlocal prob
+        assert time &gt;= 0
+
+        if state in prob:
+            return path_prob * prob[state]
+        elif pred(state):
+            prob[state] = 0
+            return 1
+        elif time == 0:
+            return 0
+
+        acc = 0
+        for action in dyn.inputs:
+            for state2, state2_prob in dyn._probs(state, action):
+                acc += pevent(state2, path_prob * state2_prob, time - 1)
+
+        return acc / len(dyn.inputs)
+
+    return pevent(dyn.start, path_prob=1, time=horizon)</code></pre>
 </details>
 </section>
 <section>
@@ -223,6 +253,47 @@ def pdfa2dict(pdfa):
     return mapping, pdfa.start</code></pre>
 </details>
 </dd>
+<dt id="probabilistic_automata.utils.prob_pred"><code class="name flex">
+<span>def <span class="ident">prob_pred</span></span>(<span>dyn, *, pred, horizon)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Return the probability that pred will evaluate to true before
+horizon time step assuming system inputs are applied uniformly at
+random.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def prob_pred(dyn, *, pred, horizon) -&gt; float:
+    &#34;&#34;&#34;
+    Return the probability that pred will evaluate to true before
+    horizon time step assuming system inputs are applied uniformly at
+    random.
+    &#34;&#34;&#34;
+    prob = {}
+
+    def pevent(state, path_prob, time):
+        nonlocal prob
+        assert time &gt;= 0
+
+        if state in prob:
+            return path_prob * prob[state]
+        elif pred(state):
+            prob[state] = 0
+            return 1
+        elif time == 0:
+            return 0
+
+        acc = 0
+        for action in dyn.inputs:
+            for state2, state2_prob in dyn._probs(state, action):
+                acc += pevent(state2, path_prob * state2_prob, time - 1)
+
+        return acc / len(dyn.inputs)
+
+    return pevent(dyn.start, path_prob=1, time=horizon)</code></pre>
+</details>
+</dd>
 </dl>
 </section>
 <section>
@@ -243,6 +314,7 @@ def pdfa2dict(pdfa):
 <ul class="">
 <li><code><a title="probabilistic_automata.utils.dict2pdfa" href="#probabilistic_automata.utils.dict2pdfa">dict2pdfa</a></code></li>
 <li><code><a title="probabilistic_automata.utils.pdfa2dict" href="#probabilistic_automata.utils.pdfa2dict">pdfa2dict</a></code></li>
+<li><code><a title="probabilistic_automata.utils.prob_pred" href="#probabilistic_automata.utils.prob_pred">prob_pred</a></code></li>
 </ul>
 </li>
 </ul>

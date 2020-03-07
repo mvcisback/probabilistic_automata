@@ -66,6 +66,8 @@ class PDFA:
 
     @dfa.validator
     def _check_product_lang(self, _, dfa):
+        if isinstance(dfa.inputs, ProductAlphabet):
+            return
         assert all(isinstance(i, tuple) and len(i) == 2 for i in dfa.inputs)
 
     @property
@@ -96,7 +98,7 @@ class PDFA:
         &#34;&#34;&#34;Computes the set of reachable states from start.&#34;&#34;&#34;
         return self.dfa.states()
 
-    def run(self, *, start=None, seed=None):
+    def run(self, *, start=None, seed=None, label=False):
         &#34;&#34;&#34;Co-routine interface for simulating runs of the automaton.
 
         - Users can send system actions (elements of self.inputs).
@@ -119,9 +121,10 @@ class PDFA:
 
         state = self.start if start is None else start
         machine = self.dfa.run(start=start)
+        labeler = self.dfa._label if label else lambda x: x
 
         while True:
-            sys_action = yield state
+            sys_action = yield labeler(state)
             env_action = self.env_dist(state, sys_action).sample()
             state = machine.send((sys_action, env_action))
 
@@ -376,6 +379,8 @@ to a state indexed stationary distribution.</p></section>
 
     @dfa.validator
     def _check_product_lang(self, _, dfa):
+        if isinstance(dfa.inputs, ProductAlphabet):
+            return
         assert all(isinstance(i, tuple) and len(i) == 2 for i in dfa.inputs)
 
     @property
@@ -406,7 +411,7 @@ to a state indexed stationary distribution.</p></section>
         &#34;&#34;&#34;Computes the set of reachable states from start.&#34;&#34;&#34;
         return self.dfa.states()
 
-    def run(self, *, start=None, seed=None):
+    def run(self, *, start=None, seed=None, label=False):
         &#34;&#34;&#34;Co-routine interface for simulating runs of the automaton.
 
         - Users can send system actions (elements of self.inputs).
@@ -429,9 +434,10 @@ to a state indexed stationary distribution.</p></section>
 
         state = self.start if start is None else start
         machine = self.dfa.run(start=start)
+        labeler = self.dfa._label if label else lambda x: x
 
         while True:
-            sys_action = yield state
+            sys_action = yield labeler(state)
             env_action = self.env_dist(state, sys_action).sample()
             state = machine.send((sys_action, env_action))
 
@@ -591,7 +597,7 @@ given action.</p></section>
 </details>
 </dd>
 <dt id="probabilistic_automata.pa.PDFA.run"><code class="name flex">
-<span>def <span class="ident">run</span></span>(<span>self, *, start=None, seed=None)</span>
+<span>def <span class="ident">run</span></span>(<span>self, *, start=None, seed=None, label=False)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Co-routine interface for simulating runs of the automaton.</p>
@@ -611,7 +617,7 @@ state2 = sim.send(my_input)</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def run(self, *, start=None, seed=None):
+<pre><code class="python">def run(self, *, start=None, seed=None, label=False):
     &#34;&#34;&#34;Co-routine interface for simulating runs of the automaton.
 
     - Users can send system actions (elements of self.inputs).
@@ -634,9 +640,10 @@ state2 = sim.send(my_input)</p></section>
 
     state = self.start if start is None else start
     machine = self.dfa.run(start=start)
+    labeler = self.dfa._label if label else lambda x: x
 
     while True:
-        sys_action = yield state
+        sys_action = yield labeler(state)
         env_action = self.env_dist(state, sys_action).sample()
         state = machine.send((sys_action, env_action))</code></pre>
 </details>
