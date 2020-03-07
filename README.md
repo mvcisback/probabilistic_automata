@@ -9,6 +9,20 @@
 Python library for manipulating Probabilistic Automata. This library
 builds upon the [`dfa`](https://github.com/mvcisback/dfa) package.
 
+<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-generate-toc again -->
+**Table of Contents**
+
+- [Probabilistic Automata](#probabilistic-automata)
+- [Installation](#installation)
+- [Usage](#usage)
+    - [Dict <-> PDFA](#dict---pdfa)
+    - [DFA to PDFA](#dfa-to-pdfa)
+    - [Composition](#composition)
+
+<!-- markdown-toc end -->
+
+
+
 # Installation
 
 If you just need to use `probabilistic_automata`, you can just run:
