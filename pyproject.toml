@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "probabilistic_automata"
 readme="README.md"
-version = "0.1.1"
+version = "0.2.0"
 description = "Python library for manipulating probabilistic automata."
 authors = ["Marcell Vazquez-Chanlatte <mvc@linux.com>"]
 repository = "https://github.com/mvcisback/probabilistic_automata"
