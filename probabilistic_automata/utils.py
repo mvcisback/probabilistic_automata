@@ -98,3 +98,33 @@ def pdfa2dict(pdfa):
         label = pdfa.dfa._label(s)
         mapping[s] = (label, action2state_prob)
     return mapping, pdfa.start
+
+
+def prob_pred(dyn, *, pred, horizon) -> float:
+    """
+    Return the probability that pred will evaluate to true before
+    horizon time step assuming system inputs are applied uniformly at
+    random.
+    """
+    prob = {}
+
+    def pevent(state, path_prob, time):
+        nonlocal prob
+        assert time >= 0
+
+        if state in prob:
+            return path_prob * prob[state]
+        elif pred(state):
+            prob[state] = 0
+            return 1
+        elif time == 0:
+            return 0
+
+        acc = 0
+        for action in dyn.inputs:
+            for state2, state2_prob in dyn._probs(state, action):
+                acc += pevent(state2, path_prob * state2_prob, time - 1)
+
+        return acc / len(dyn.inputs)
+
+    return pevent(dyn.start, path_prob=1, time=horizon)

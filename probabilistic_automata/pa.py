@@ -71,7 +71,7 @@ class PDFA:
         """Computes the set of reachable states from start."""
         return self.dfa.states()
 
-    def run(self, *, start=None, seed=None):
+    def run(self, *, start=None, seed=None, label=False):
         """Co-routine interface for simulating runs of the automaton.
 
         - Users can send system actions (elements of self.inputs).
@@ -94,9 +94,10 @@ class PDFA:
 
         state = self.start if start is None else start
         machine = self.dfa.run(start=start)
+        labeler = self.dfa._label if label else lambda x: x
 
         while True:
-            sys_action = yield state
+            sys_action = yield labeler(state)
             env_action = self.env_dist(state, sys_action).sample()
             state = machine.send((sys_action, env_action))
 
