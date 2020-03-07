@@ -104,6 +104,9 @@ class PDFA:
         - Users can send system actions (elements of self.inputs).
         - Co-routine yields the current state.
 
+        If label is True, then state labels are returned instead
+        of states.
+
         Example:
         =======
 
@@ -417,6 +420,9 @@ to a state indexed stationary distribution.</p></section>
         - Users can send system actions (elements of self.inputs).
         - Co-routine yields the current state.
 
+        If label is True, then state labels are returned instead
+        of states.
+
         Example:
         =======
 
@@ -605,6 +611,8 @@ given action.</p></section>
 <li>Users can send system actions (elements of self.inputs).</li>
 <li>Co-routine yields the current state.</li>
 </ul>
+<p>If label is True, then state labels are returned instead
+of states.</p>
 <h1 id="example">Example:</h1>
 <p>machine: PDFA = ..
 my_input: Action = ..
@@ -622,6 +630,9 @@ state2 = sim.send(my_input)</p></section>
 
     - Users can send system actions (elements of self.inputs).
     - Co-routine yields the current state.
+
+    If label is True, then state labels are returned instead
+    of states.
 
     Example:
     =======

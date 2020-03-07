@@ -77,6 +77,9 @@ class PDFA:
         - Users can send system actions (elements of self.inputs).
         - Co-routine yields the current state.
 
+        If label is True, then state labels are returned instead
+        of states.
+
         Example:
         =======
 
