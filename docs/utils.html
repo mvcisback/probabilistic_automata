@@ -28,6 +28,7 @@
 
 import funcy as fn
 from lenses import bind
+from dfa import ProductAlphabet
 
 from probabilistic_automata import pa as PA
 
@@ -153,7 +154,41 @@ def prob_pred(dyn, *, pred, horizon) -&gt; float:
 
         return acc / len(dyn.inputs)
 
-    return pevent(dyn.start, path_prob=1, time=horizon)</code></pre>
+    return pevent(dyn.start, path_prob=1, time=horizon)
+
+
+def tee(left, right):
+    &#34;&#34;&#34;Parallel composition of left and right sharing inputs.&#34;&#34;&#34;
+    if left.inputs &lt;= right.inputs:
+        inputs = left.inputs
+    elif right.inputs &lt;= left.inputs:
+        inputs = right.inputs
+    else:
+        raise RuntimeError(&#34;Inputs need to be compatible&#34;)
+
+    def transition(s, composite_input):
+        sys_input, (env_l, env_r) = composite_input
+        state2_l = left.dfa._transition(s[0], (sys_input, env_l))
+        state2_r = right.dfa._transition(s[1], (sys_input, env_r))
+        return (state2_l, state2_r)
+
+    def env_dist(composite_state, action):
+        state_l, state_r = composite_state
+
+        return PA.ProductDistribution(
+            left=left.env_dist(state_l, action),
+            right=right.env_dist(state_r, action),
+        )
+
+    return PA.pdfa(
+        start=(left.start, right.start),
+        inputs=inputs,
+        transition=transition,
+        label=lambda s: (left._label(s[0]), right._label(s[1])),
+        outputs=ProductAlphabet(left.outputs, right.outputs),
+        env_dist=env_dist,
+        env_inputs=ProductAlphabet(left.env_inputs, right.env_inputs),
+    )</code></pre>
 </details>
 </section>
 <section>
@@ -294,6 +329,49 @@ random.</p></section>
     return pevent(dyn.start, path_prob=1, time=horizon)</code></pre>
 </details>
 </dd>
+<dt id="probabilistic_automata.utils.tee"><code class="name flex">
+<span>def <span class="ident">tee</span></span>(<span>left, right)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Parallel composition of left and right sharing inputs.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def tee(left, right):
+    &#34;&#34;&#34;Parallel composition of left and right sharing inputs.&#34;&#34;&#34;
+    if left.inputs &lt;= right.inputs:
+        inputs = left.inputs
+    elif right.inputs &lt;= left.inputs:
+        inputs = right.inputs
+    else:
+        raise RuntimeError(&#34;Inputs need to be compatible&#34;)
+
+    def transition(s, composite_input):
+        sys_input, (env_l, env_r) = composite_input
+        state2_l = left.dfa._transition(s[0], (sys_input, env_l))
+        state2_r = right.dfa._transition(s[1], (sys_input, env_r))
+        return (state2_l, state2_r)
+
+    def env_dist(composite_state, action):
+        state_l, state_r = composite_state
+
+        return PA.ProductDistribution(
+            left=left.env_dist(state_l, action),
+            right=right.env_dist(state_r, action),
+        )
+
+    return PA.pdfa(
+        start=(left.start, right.start),
+        inputs=inputs,
+        transition=transition,
+        label=lambda s: (left._label(s[0]), right._label(s[1])),
+        outputs=ProductAlphabet(left.outputs, right.outputs),
+        env_dist=env_dist,
+        env_inputs=ProductAlphabet(left.env_inputs, right.env_inputs),
+    )</code></pre>
+</details>
+</dd>
 </dl>
 </section>
 <section>
@@ -315,6 +393,7 @@ random.</p></section>
 <li><code><a title="probabilistic_automata.utils.dict2pdfa" href="#probabilistic_automata.utils.dict2pdfa">dict2pdfa</a></code></li>
 <li><code><a title="probabilistic_automata.utils.pdfa2dict" href="#probabilistic_automata.utils.pdfa2dict">pdfa2dict</a></code></li>
 <li><code><a title="probabilistic_automata.utils.prob_pred" href="#probabilistic_automata.utils.prob_pred">prob_pred</a></code></li>
+<li><code><a title="probabilistic_automata.utils.tee" href="#probabilistic_automata.utils.tee">tee</a></code></li>
 </ul>
 </li>
 </ul>

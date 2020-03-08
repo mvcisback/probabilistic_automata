@@ -98,6 +98,9 @@ class PDFA:
         &#34;&#34;&#34;Computes the set of reachable states from start.&#34;&#34;&#34;
         return self.dfa.states()
 
+    def _label(self, state):
+        return self.dfa.label((), start=state)
+
     def run(self, *, start=None, seed=None, label=False):
         &#34;&#34;&#34;Co-routine interface for simulating runs of the automaton.
 
@@ -118,18 +121,23 @@ class PDFA:
         state1 = sim.send(my_input)
         state2 = sim.send(my_input)
         &#34;&#34;&#34;
-
         if seed is not None:
             random.seed(seed)
 
-        state = self.start if start is None else start
-        machine = self.dfa.run(start=start)
         labeler = self.dfa._label if label else lambda x: x
+
+        machine = self.dfa.run(start=start)
+        state = machine.send(None)
 
         while True:
             sys_action = yield labeler(state)
             env_action = self.env_dist(state, sys_action).sample()
             state = machine.send((sys_action, env_action))
+
+    trace = DFA.trace
+    transition = DFA.transition
+    transduce = DFA.transduce
+    label = DFA.label
 
     @fn.memoize
     def support(self, state, action) -&gt; Set[State]:
@@ -414,6 +422,9 @@ to a state indexed stationary distribution.</p></section>
         &#34;&#34;&#34;Computes the set of reachable states from start.&#34;&#34;&#34;
         return self.dfa.states()
 
+    def _label(self, state):
+        return self.dfa.label((), start=state)
+
     def run(self, *, start=None, seed=None, label=False):
         &#34;&#34;&#34;Co-routine interface for simulating runs of the automaton.
 
@@ -434,18 +445,23 @@ to a state indexed stationary distribution.</p></section>
         state1 = sim.send(my_input)
         state2 = sim.send(my_input)
         &#34;&#34;&#34;
-
         if seed is not None:
             random.seed(seed)
 
-        state = self.start if start is None else start
-        machine = self.dfa.run(start=start)
         labeler = self.dfa._label if label else lambda x: x
+
+        machine = self.dfa.run(start=start)
+        state = machine.send(None)
 
         while True:
             sys_action = yield labeler(state)
             env_action = self.env_dist(state, sys_action).sample()
             state = machine.send((sys_action, env_action))
+
+    trace = DFA.trace
+    transition = DFA.transition
+    transduce = DFA.transduce
+    label = DFA.label
 
     @fn.memoize
     def support(self, state, action) -&gt; Set[State]:
@@ -584,6 +600,22 @@ def start(self):
 </dl>
 <h3>Methods</h3>
 <dl>
+<dt id="probabilistic_automata.pa.PDFA.label"><code class="name flex">
+<span>def <span class="ident">label</span></span>(<span>self, word, *, start=None)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Returns the label of the input word.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def label(self, word, *, start=None):
+    &#34;&#34;&#34;Returns the label of the input word.&#34;&#34;&#34;
+    output = self._label(self.transition(word, start=start))
+    assert (self.outputs is None) or (output in self.outputs)
+    return output</code></pre>
+</details>
+</dd>
 <dt id="probabilistic_automata.pa.PDFA.prob"><code class="name flex">
 <span>def <span class="ident">prob</span></span>(<span>self, start, end, action)</span>
 </code></dt>
@@ -645,13 +677,13 @@ state2 = sim.send(my_input)</p></section>
     state1 = sim.send(my_input)
     state2 = sim.send(my_input)
     &#34;&#34;&#34;
-
     if seed is not None:
         random.seed(seed)
 
-    state = self.start if start is None else start
-    machine = self.dfa.run(start=start)
     labeler = self.dfa._label if label else lambda x: x
+
+    machine = self.dfa.run(start=start)
+    state = machine.send(None)
 
     while True:
         sys_action = yield labeler(state)
@@ -686,6 +718,55 @@ state2 = sim.send(my_input)</p></section>
 def support(self, state, action) -&gt; Set[State]:
     &#34;&#34;&#34;Returns the set of reachable states given (state, action).&#34;&#34;&#34;
     return set(self.transition_probs(state, action).keys())</code></pre>
+</details>
+</dd>
+<dt id="probabilistic_automata.pa.PDFA.trace"><code class="name flex">
+<span>def <span class="ident">trace</span></span>(<span>self, word, *, start=None)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Creates a generator that yields the sequence of states that
+results from reading the word.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def trace(self, word, *, start=None):
+    &#34;&#34;&#34;Creates a generator that yields the sequence of states that
+    results from reading the word.
+    &#34;&#34;&#34;
+    machine = self.run(start=start)
+
+    for char in fn.concat([None], word):
+        state = machine.send(char)
+        yield state</code></pre>
+</details>
+</dd>
+<dt id="probabilistic_automata.pa.PDFA.transduce"><code class="name flex">
+<span>def <span class="ident">transduce</span></span>(<span>self, word, *, start=None)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Returns the labels of the states traced by the input word.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def transduce(self, word, *, start=None):
+    &#34;&#34;&#34;Returns the labels of the states traced by the input word.&#34;&#34;&#34;
+    return tuple(map(self._label, self.trace(word, start=start)))[:-1]</code></pre>
+</details>
+</dd>
+<dt id="probabilistic_automata.pa.PDFA.transition"><code class="name flex">
+<span>def <span class="ident">transition</span></span>(<span>self, word, *, start=None)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Returns the state the input word accesses.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def transition(self, word, *, start=None):
+    &#34;&#34;&#34;Returns the state the input word accesses.&#34;&#34;&#34;
+    return fn.last(self.trace(word, start=start))</code></pre>
 </details>
 </dd>
 <dt id="probabilistic_automata.pa.PDFA.transition_probs"><code class="name flex">
@@ -735,12 +816,16 @@ def support(self, state, action) -&gt; Set[State]:
 <ul class="two-column">
 <li><code><a title="probabilistic_automata.pa.PDFA.env_inputs" href="#probabilistic_automata.pa.PDFA.env_inputs">env_inputs</a></code></li>
 <li><code><a title="probabilistic_automata.pa.PDFA.inputs" href="#probabilistic_automata.pa.PDFA.inputs">inputs</a></code></li>
+<li><code><a title="probabilistic_automata.pa.PDFA.label" href="#probabilistic_automata.pa.PDFA.label">label</a></code></li>
 <li><code><a title="probabilistic_automata.pa.PDFA.outputs" href="#probabilistic_automata.pa.PDFA.outputs">outputs</a></code></li>
 <li><code><a title="probabilistic_automata.pa.PDFA.prob" href="#probabilistic_automata.pa.PDFA.prob">prob</a></code></li>
 <li><code><a title="probabilistic_automata.pa.PDFA.run" href="#probabilistic_automata.pa.PDFA.run">run</a></code></li>
 <li><code><a title="probabilistic_automata.pa.PDFA.start" href="#probabilistic_automata.pa.PDFA.start">start</a></code></li>
 <li><code><a title="probabilistic_automata.pa.PDFA.states" href="#probabilistic_automata.pa.PDFA.states">states</a></code></li>
 <li><code><a title="probabilistic_automata.pa.PDFA.support" href="#probabilistic_automata.pa.PDFA.support">support</a></code></li>
+<li><code><a title="probabilistic_automata.pa.PDFA.trace" href="#probabilistic_automata.pa.PDFA.trace">trace</a></code></li>
+<li><code><a title="probabilistic_automata.pa.PDFA.transduce" href="#probabilistic_automata.pa.PDFA.transduce">transduce</a></code></li>
+<li><code><a title="probabilistic_automata.pa.PDFA.transition" href="#probabilistic_automata.pa.PDFA.transition">transition</a></code></li>
 <li><code><a title="probabilistic_automata.pa.PDFA.transition_probs" href="#probabilistic_automata.pa.PDFA.transition_probs">transition_probs</a></code></li>
 </ul>
 </li>
