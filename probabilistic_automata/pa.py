@@ -71,6 +71,9 @@ class PDFA:
         """Computes the set of reachable states from start."""
         return self.dfa.states()
 
+    def _label(self, state):
+        return self.dfa.label((), start=state)
+
     def run(self, *, start=None, seed=None, label=False):
         """Co-routine interface for simulating runs of the automaton.
 
@@ -91,18 +94,23 @@ class PDFA:
         state1 = sim.send(my_input)
         state2 = sim.send(my_input)
         """
-
         if seed is not None:
             random.seed(seed)
 
-        state = self.start if start is None else start
-        machine = self.dfa.run(start=start)
         labeler = self.dfa._label if label else lambda x: x
+
+        machine = self.dfa.run(start=start)
+        state = machine.send(None)
 
         while True:
             sys_action = yield labeler(state)
             env_action = self.env_dist(state, sys_action).sample()
             state = machine.send((sys_action, env_action))
+
+    trace = DFA.trace
+    transition = DFA.transition
+    transduce = DFA.transduce
+    label = DFA.label
 
     @fn.memoize
     def support(self, state, action) -> Set[State]:

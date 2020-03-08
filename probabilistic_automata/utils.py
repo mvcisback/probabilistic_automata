@@ -2,6 +2,7 @@ from operator import itemgetter as ig
 
 import funcy as fn
 from lenses import bind
+from dfa import ProductAlphabet
 
 from probabilistic_automata import pa as PA
 
@@ -128,3 +129,37 @@ def prob_pred(dyn, *, pred, horizon) -> float:
         return acc / len(dyn.inputs)
 
     return pevent(dyn.start, path_prob=1, time=horizon)
+
+
+def tee(left, right):
+    """Parallel composition of left and right sharing inputs."""
+    if left.inputs <= right.inputs:
+        inputs = left.inputs
+    elif right.inputs <= left.inputs:
+        inputs = right.inputs
+    else:
+        raise RuntimeError("Inputs need to be compatible")
+
+    def transition(s, composite_input):
+        sys_input, (env_l, env_r) = composite_input
+        state2_l = left.dfa._transition(s[0], (sys_input, env_l))
+        state2_r = right.dfa._transition(s[1], (sys_input, env_r))
+        return (state2_l, state2_r)
+
+    def env_dist(composite_state, action):
+        state_l, state_r = composite_state
+
+        return PA.ProductDistribution(
+            left=left.env_dist(state_l, action),
+            right=right.env_dist(state_r, action),
+        )
+
+    return PA.pdfa(
+        start=(left.start, right.start),
+        inputs=inputs,
+        transition=transition,
+        label=lambda s: (left._label(s[0]), right._label(s[1])),
+        outputs=ProductAlphabet(left.outputs, right.outputs),
+        env_dist=env_dist,
+        env_inputs=ProductAlphabet(left.env_inputs, right.env_inputs),
+    )

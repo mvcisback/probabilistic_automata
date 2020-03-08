@@ -3,7 +3,7 @@ from dfa import DFA
 from dfa.utils import universal, empty
 
 from probabilistic_automata import lift
-from probabilistic_automata.utils import prob_pred
+from probabilistic_automata.utils import prob_pred, tee
 from probabilistic_automata.utils import dict2pdfa, pdfa2dict
 
 
@@ -34,3 +34,13 @@ def test_prob_pred():
         start=0, label=bool, inputs={0, 1}, transition=max
     ))
     assert prob_pred(or_pdfa, pred=bool, horizon=3) == pytest.approx(2**-3)
+
+
+def test_tee():
+    machine = tee(
+        lift(universal({0, 1})),
+        lift(empty({1})),
+    )
+    assert machine.inputs == {1}
+    assert machine.outputs.left == machine.outputs.right == {False, True}
+    assert machine.label((1, 1, 1)) == (True, False)
