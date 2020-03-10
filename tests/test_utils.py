@@ -41,6 +41,18 @@ def test_tee():
         lift(universal({0, 1})),
         lift(empty({1})),
     )
+    assert len(machine.states()) == 1
     assert machine.inputs == {1}
     assert machine.outputs.left == machine.outputs.right == {False, True}
+    assert machine.label((1, 1, 1)) == (True, False)
+
+    identity = lift(DFA(
+        start=1, label=lambda x: x,
+        transition=lambda _, c: c,
+        outputs={1}, inputs={1},
+    ))
+    machine = identity >> machine
+
+    assert len(machine.states()) == 1
+    assert machine.inputs == {1}
     assert machine.label((1, 1, 1)) == (True, False)

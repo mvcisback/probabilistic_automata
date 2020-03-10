@@ -33,6 +33,7 @@ class ExplicitDistribution:
 
 @attr.s(frozen=True, auto_attribs=True)
 class ProductDistribution:
+    """Object representing the product distribution of left and right."""
     left: Distribution
     right: Distribution
 

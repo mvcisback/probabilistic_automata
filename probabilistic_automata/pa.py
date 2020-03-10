@@ -193,7 +193,7 @@ def pdfa(
         start: State,
         label: Callable[[State], Letter],
         transition: Callable[[State, Action], State],
-        env_dist: EnvDist,
+        env_dist: EnvDist = None,
         inputs: Alphabet = None,
         env_inputs: Alphabet = None,
         outputs: Alphabet = None
@@ -204,8 +204,9 @@ def pdfa(
         inputs = SupAlphabet()
     if outputs is None:
         outputs = {True, False}
-    if env_inputs is None:
+    if env_inputs is None and env_dist is None:
         env_inputs = {None}
+        env_dist = uniform(env_inputs)
 
     inputs = ProductAlphabet(inputs, env_inputs)
 
