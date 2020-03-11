@@ -75,7 +75,7 @@ description = "Python library for modeling DFAs, Moore Machines, and Transition 
 name = "dfa"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "1.1.0"
+version = "2.0.0"
 
 [package.dependencies]
 attrs = ">=19.1,<20.0"
@@ -448,7 +448,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "3e531b5a17633d27d87a03c31bef36f60f145217fada25432c3488c9306393eb"
+content-hash = "8e8bf04d79736109fcd02a8e04d0ac692c5d71d4ba5b8f1684539bafcab78863"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -510,8 +510,8 @@ coverage = [
     {file = "coverage-5.0.3.tar.gz", hash = "sha256:77afca04240c40450c331fa796b3eab6f1e15c5ecf8bf2b8bee9706cd5452fef"},
 ]
 dfa = [
-    {file = "dfa-1.1.0-py3-none-any.whl", hash = "sha256:212dba8b3d564ad70a8e9391f78297e2c9ebb40d29fdf762ec6ea309b634499a"},
-    {file = "dfa-1.1.0.tar.gz", hash = "sha256:19079a3c501ff47f76e36f15c2f5bf7724a91fdfb0e405d8b8a6c5b542b18e72"},
+    {file = "dfa-2.0.0-py3-none-any.whl", hash = "sha256:35304522ed95e069fcd877698fdd6cbf410b2ab740f8f4276921eec0bf2ff301"},
+    {file = "dfa-2.0.0.tar.gz", hash = "sha256:26a9cab926ab57b2717452a4594b8ae839ab46caa4f6b310fe943d30dde285e8"},
 ]
 entrypoints = [
     {file = "entrypoints-0.3-py2.py3-none-any.whl", hash = "sha256:589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19"},
