@@ -34,6 +34,8 @@ def test_lift():
         assert len(other) == 0
         assert pdfa.prob(s, end, a) == 1
 
+    assert PA.lift(pdfa) == pdfa
+
 
 NOISY_PARITY = PA.pdfa(
     start=0,

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import random
 from collections import defaultdict
-from typing import Callable, Mapping, Set
+from typing import Callable, Mapping, Set, Union
 
 import attr
 import funcy as fn
@@ -220,8 +220,11 @@ def pdfa(
     )
 
 
-def lift(dyn: DFA) -> PDFA:
+def lift(dyn: Union[DFA, PDFA]) -> PDFA:
     """Lifts a DFA into a deterministic PDFA."""
+    if isinstance(dyn, PDFA):
+        return dyn
+
     return PDFA(
         dfa=attr.evolve(
             dyn,
