@@ -77,14 +77,9 @@ def test_run():
 def test_par_compose():
     machine = NOISY_PARITY | NOISY_PARITY
 
-    assert machine.inputs.left == NOISY_PARITY.inputs
-    assert machine.inputs.right == NOISY_PARITY.inputs
-
-    assert machine.outputs.left == NOISY_PARITY.outputs
-    assert machine.outputs.right == NOISY_PARITY.outputs
-
-    assert machine.env_inputs.left == NOISY_PARITY.env_inputs
-    assert machine.env_inputs.right == NOISY_PARITY.env_inputs
+    assert len(machine.inputs) == len(NOISY_PARITY.inputs)**2
+    assert len(machine.outputs) == len(NOISY_PARITY.outputs)**2
+    assert len(machine.env_inputs) == len(NOISY_PARITY.env_inputs)**2
 
     assert machine.start == (0, 0)
     assert machine.support((0, 0), (0, 0)) == {(0, 0), (0, 1), (1, 0), (1, 1)}

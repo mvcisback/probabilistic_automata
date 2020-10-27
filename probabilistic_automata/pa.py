@@ -3,17 +3,22 @@ from __future__ import annotations
 
 import random
 from collections import defaultdict
+from itertools import product
 from typing import Callable, Mapping, Set, Union
 
 import attr
 import funcy as fn
-from dfa import DFA, SupAlphabet, ProductAlphabet
+from dfa import DFA
 from dfa.dfa import Alphabet, Letter, State
 
 from probabilistic_automata.distributions import (
-    Action, ExplicitDistribution, ProductDistribution, EnvDist,
-    Distribution, prod_dist, uniform
+    Action, EnvDist, Distribution, ProductDistribution,
+    prod_dist, uniform
 )
+
+
+def prod_alphabet(left, right) -> Alphabet:
+    return frozenset(product(left, right))
 
 
 def _dict2dist(env_dist) -> EnvDist:
@@ -22,8 +27,7 @@ def _dict2dist(env_dist) -> EnvDist:
         dist = env_dist(state, action)
         if isinstance(dist, Distribution.__args__):
             return dist
-
-        return ExplicitDistribution(dist)
+        return dist
 
     return env_dist2
 
@@ -39,22 +43,16 @@ class PDFA:
 
     @dfa.validator
     def _check_product_lang(self, _, dfa):
-        if isinstance(dfa.inputs, ProductAlphabet):
-            return
         assert all(isinstance(i, tuple) and len(i) == 2 for i in dfa.inputs)
 
     @property
     def env_inputs(self):
         """Accesses the set of environment inputs."""
-        if isinstance(self.dfa.inputs, ProductAlphabet):
-            return self.dfa.inputs.right
         return set(fn.pluck(1, self.dfa.inputs))
 
     @property
     def inputs(self):
         """Accesses the set of (non-environment) inputs."""
-        if isinstance(self.dfa.inputs, ProductAlphabet):
-            return self.dfa.inputs.left
         return set(fn.pluck(0, self.dfa.inputs))
 
     @property
@@ -150,9 +148,9 @@ class PDFA:
             label=lambda s: (self.dfa._label(s[0]), other.dfa._label(s[1])),
             transition=transition,
             env_dist=prod_dist(self.env_dist, other.env_dist),
-            inputs=ProductAlphabet(self.inputs, other.inputs),
-            env_inputs=ProductAlphabet(self.env_inputs, other.env_inputs),
-            outputs=ProductAlphabet(self.outputs, other.outputs),
+            inputs=prod_alphabet(self.inputs, other.inputs),
+            env_inputs=prod_alphabet(self.env_inputs, other.env_inputs),
+            outputs=prod_alphabet(self.outputs, other.outputs),
         )
 
     def __rshift__(self, other: PDFA) -> PDFA:
@@ -181,7 +179,7 @@ class PDFA:
             transition=transition,
             env_dist=env_dist,
             inputs=self.inputs,
-            env_inputs=ProductAlphabet(self.env_inputs, other.env_inputs),
+            env_inputs=prod_alphabet(self.env_inputs, other.env_inputs),
             outputs=other.outputs,
         )
 
@@ -200,15 +198,13 @@ def pdfa(
 ) -> PDFA:
     """Main entrypoint for construction a Probablistic Automaton."""
 
-    if inputs is None:
-        inputs = SupAlphabet()
     if outputs is None:
         outputs = {True, False}
     if env_inputs is None and env_dist is None:
         env_inputs = {None}
         env_dist = uniform(env_inputs)
 
-    inputs = ProductAlphabet(inputs, env_inputs)
+    inputs = None if inputs is None else set(product(inputs, env_inputs))
 
     return PDFA(
         env_dist=env_dist,
@@ -228,7 +224,7 @@ def lift(dyn: Union[DFA, PDFA]) -> PDFA:
     return PDFA(
         dfa=attr.evolve(
             dyn,
-            inputs=ProductAlphabet(dyn.inputs, {None}),
+            inputs=prod_alphabet(dyn.inputs, {None}),
             transition=lambda s, c: dyn._transition(s, c[0]),
         ),
         env_dist=uniform({None}),
@@ -242,7 +238,7 @@ def randomize(dyn: DFA) -> PDFA:
     return PDFA(
         dfa=attr.evolve(
             dyn,
-            inputs=ProductAlphabet({None}, dyn.inputs),
+            inputs=prod_alphabet({None}, dyn.inputs),
             transition=lambda s, c: dyn._transition(s, c[1]),
         ),
         env_dist=uniform(dyn.inputs),
