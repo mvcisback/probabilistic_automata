@@ -2,7 +2,6 @@ from operator import itemgetter as ig
 
 import funcy as fn
 from lenses import bind
-from dfa import ProductAlphabet
 
 from probabilistic_automata import pa as PA
 
@@ -159,7 +158,7 @@ def tee(left, right):
         inputs=inputs,
         transition=transition,
         label=lambda s: (left._label(s[0]), right._label(s[1])),
-        outputs=ProductAlphabet(left.outputs, right.outputs),
+        outputs=PA.prod_alphabet(left.outputs, right.outputs),
         env_dist=env_dist,
-        env_inputs=ProductAlphabet(left.env_inputs, right.env_inputs),
+        env_inputs=PA.prod_alphabet(left.env_inputs, right.env_inputs),
     )

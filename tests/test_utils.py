@@ -1,10 +1,27 @@
 import pytest
 from dfa import DFA
-from dfa.utils import universal, empty
 
 from probabilistic_automata import lift
 from probabilistic_automata.utils import prob_pred, tee
 from probabilistic_automata.utils import dict2pdfa, pdfa2dict
+
+
+def universal(alphabet):
+    return DFA(
+        start=True,
+        label=lambda *_: True,
+        transition=lambda *_: True,
+        inputs=alphabet,
+    )
+
+
+def empty(alphabet):
+    return DFA(
+        start=False,
+        label=lambda *_: False,
+        transition=lambda *_: False,
+        inputs=alphabet,
+    )
 
 
 def test_dict2pdfa():
@@ -43,7 +60,7 @@ def test_tee():
     )
     assert len(machine.states()) == 1
     assert machine.inputs == {1}
-    assert machine.outputs.left == machine.outputs.right == {False, True}
+    assert machine.outputs == {(0, 0), (0, 1), (1, 0), (1, 1)}
     assert machine.label((1, 1, 1)) == (True, False)
 
     identity = lift(DFA(

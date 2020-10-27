@@ -98,14 +98,20 @@ class PDFA:
         labeler = self.dfa._label if label else lambda x: x
 
         machine = self.dfa.run(start=start)
-        state = machine.send(None)
+        next(machine)
+        state = self.dfa.start
 
         while True:
             sys_action = yield labeler(state)
             env_action = self.env_dist(state, sys_action).sample()
             state = machine.send((sys_action, env_action))
 
-    trace = DFA.trace
+    def trace(self, word, *, start=None):
+        machine = self.run(start=start)
+        next(machine)
+        for letter in word:
+            yield machine.send(letter)
+
     transition = DFA.transition
     transduce = DFA.transduce
     label = DFA.label
